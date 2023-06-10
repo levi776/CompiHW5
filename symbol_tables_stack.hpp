@@ -72,12 +72,17 @@ class symbol_tables_stack{
         
         /*Init*/
         symbol_tables_stack(){
-            push_scope();
+           push_scope();
         }
 
         /*Stack Methods*/
         void push_scope()
         {
+            //TODO: Maybe tab should be initialized to -1 in the CodeBuffer.
+           /*
+           CodeBuffer::instance().addIndent();
+           */
+
             bool is_in_while_inherited_from_father = false;
             symbol_table *parent = nullptr;
             bool is_global = true;
@@ -98,8 +103,11 @@ class symbol_tables_stack{
             this->offsets.push(offset);
         }
         void pop_scope(){
-            output::endScope();
-            this->tables.top()->printTable();
+            //TODO:
+            /*
+            CodeBuffer::instance().removeIndent();
+            */
+                        
             // unless you want to make it super complicated, this stays this way!
             symbol_table *top_table = this->tables.top();
             this->tables.pop();
@@ -111,6 +119,8 @@ class symbol_tables_stack{
         {
             return tables.top();
         }
+        
+        //COMMENT: maybe we would like to add another parameter VAR
         void insert(string name, string type, bool is_func, bool is_override,int yylineno)
         {
             assert(this->top_scope() != nullptr);

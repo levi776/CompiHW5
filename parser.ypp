@@ -4,7 +4,12 @@
     #include <iostream>
     #include <cstring>
     #include "symbol_tables_stack.hpp"
-    
+    #include "registers.hpp"
+    #include "bp.hpp"
+    //TODO:
+    /*
+    #define EMPTY_VAR "EMPTY"
+    */
     extern int yylineno;
     int yylex();
     void yyerror( const char* s);
@@ -23,12 +28,22 @@
     char* join(char* s1,char* s2);
 
 
-
+//TODO:ADD SOME OF THE FUNCTIONS BELOW
+/*
+    vector<string> charToVector(const char* list);
+    std::string typeToLLVMType(const char* type);
+    std::string opToCommandName(const char* op, const char* type);
+    void resolveJumpToNextLine(E* exp);
+    bool notLastBool(vector<string>::iterator it, vector<string>::iterator end);
+    CodeBuffer& cbf = CodeBuffer::instance();
+    Registers& rgs = Registers::instance();
+*/
 
 
     
 %}
 %define parse.error verbose;
+
 %nonassoc VOID;
 %nonassoc INT;
 %nonassoc BYTE;
@@ -71,10 +86,16 @@
 
 %%
 Program
-    : Funcs {
+    : {//TODO: /*GO TO REFRENCE!*/}
+    Funcs {
         if (yychar == YYEOF) {
             _stack.validateMainFunction(yylineno);
             _stack.pop_scope();
+            //TODO:
+            /*
+            cbf.printGlobalBuffer();
+            cbf.printCodeBuffer();
+            */
         }
         
     }
@@ -87,11 +108,25 @@ Funcs
 
 FuncDecl
     : OverRide RetType ID LPAREN Formals
-    { _stack.insert(string($3.name), string(join(join($5.type ,"->"),$2.type)), true, $1.intVal, yylineno);}
+    { 
+        _stack.insert(string($3.name), string(join(join($5.type ,"->"),$2.type)), true, $1.intVal, yylineno);
+        //TODO:REFRENCE
+        /*
+        cbf.formalsFuncGenerator(...);
+        */
+    
+    }
     RPAREN LBRACE 
     {_stack.push_scope();_stack.symbol_table_add_function_parameter_entries(string($5.name), string($5.type), yylineno);} 
     Statements RBRACE 
-    {_stack.pop_scope();}//problem here
+    {_stack.pop_scope();
+    
+    //TODO: REFRENCE
+    /*
+    cbf.funcDeclGen(...);
+    */
+    
+    }
     ;
 OverRide
     :/*epsilon*/ {$$.intVal = false;}
@@ -118,49 +153,287 @@ FormalDecl
     ;
 
 Statements
-    : Statement {/*empty*/}
-    | Statements Statement {/*empty*/}
+    : Statement 
+    {
+        //TODO: ADD
+        /*
+        $$.nextList = $1.nextList;
+        $$.breakList = $1.breakList;
+        $$.contList = $1.contList;
+        */
+        }
+    | Statements
+    {
+        //TODO: add
+        /*
+        if(($1.nextList).size() > 0)
+        {
+          string label = cbf.genLabel();
+          cbf.bpatch($1.nextList, label);
+        }
+        */
+    } Statement 
+    {
+        //TODO: ADD
+        /*
+        $$.nextList = $3.nextList; 
+        $$.breakList = cbf.merge($1.breakList, $3.breakList);
+        $$.contList = cbf.merge($1.contList, $3.contList);
+        */
+        }
     ;
 Statement 
-    : LBRACE {_stack.push_scope();} Statements RBRACE {_stack.pop_scope();}
-    | Type ID SC { _stack.insert($2.name , $1.type, false, false, yylineno); $2.type=$1.type;}
-    | Type ID ASSIGN Exp SC { if(typesDontMatch($1.type, $4.type)) errorMismatch(yylineno); $2.type=$1.type; _stack.insert($2.name , $2.type, false, false, yylineno); }
-    | ID ASSIGN { if(!_stack.nameExists($1.name) || _stack.isFunc($1.name)) errorUndef(yylineno, $1.name);} Exp SC { if(typesDontMatch(_stack.getType($1.name).data(), $4.type)) errorMismatch(yylineno); }
-    | Call SC { /*empty*/ }
-    | RETURN SC { if(!isVoid()||_stack.getCurrentfunctionreturnType()!="VOID") errorMismatch(yylineno); }
-    | RETURN Exp SC { if(isVoid()||!_stack.is_desired_return_type(string($2.type),_stack.getCurrentfunctionreturnType(),false)) errorMismatch(yylineno); }
-    | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER 
-    | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER ELSE {_stack.push_scope();} Statement {_stack.pop_scope();}
-    | WHILE {_stack.push_scope();_stack.updateInWhile(true);} LPAREN Exp { if(notBool($4.type)) {errorMismatch(yylineno);}} RPAREN Statement {_stack.updateInWhile(false); _stack.pop_scope();}
-    | BREAK SC { if(!_stack.inWhileLoop()) {errorUnexpectedBreak(yylineno);}}
-    | CONTINUE SC { if(!_stack.inWhileLoop()) {errorUnexpectedContinue(yylineno);}}
+    : LBRACE {_stack.push_scope();} Statements RBRACE 
+    {
+        _stack.pop_scope();
+        //TODO: ADD
+        /*
+        $$.nextList = $3.nextList;
+        $$.breakList = $3.breakList;
+        $$.contList = $3.contList;
+        */
+    }
+    | Type ID SC { 
+        _stack.insert($2.name , $1.type, false, false, yylineno);
+        $2.type=$1.type;
+        //TODO: REFRENCE
+        /*
+        varDefintionGenerate(...);
+        */
+        
+        }
+    | Type ID ASSIGN Exp SC 
+    {
+        if(typesDontMatch($1.type, $4.type)) errorMismatch(yylineno);
+        $2.type=$1.type; _stack.insert($2.name , $2.type, false, false, yylineno);
+        //TODO: REFRENCE
+        /*
+        varDefintionAndAssignmentGenerate(...);
+        */
+        }
+    | ID ASSIGN {
+        if(!_stack.nameExists($1.name) || _stack.isFunc($1.name)) errorUndef(yylineno, $1.name);
+        
+        //TODO: REFRENCE
+        /*
+        midAssignmentGenerate(...);
+        */
+        } 
+        Exp SC { 
+            if(typesDontMatch(_stack.getType($1.name).data(), $4.type)) errorMismatch(yylineno);
+        //TODO: REFRENCE
+        /*
+        endAssignmentGenerate(...);
+        */
+        }
+    | Call SC {
+      //TODO: ADD
+      /*
+      $$.type = $1.type;
+      $$.var = rgs.freshVar();
+      resolveJumpToNextLine(&($1));
+      cbf.emit($1.label);
+      */ }
+    | RETURN SC { 
+        if(!isVoid()||_stack.getCurrentfunctionreturnType()!="VOID") errorMismatch(yylineno); 
+        //TODO: ADD
+        /*
+        cbf.emit("ret void");
+        */
+        }
+    | RETURN Exp SC {
+        if(isVoid()||!_stack.is_desired_return_type(string($2.type),_stack.getCurrentfunctionreturnType(),false)) errorMismatch(yylineno);
+        //TODO: REFRENCE
+        /*
+        returnNonVoidGenerate(...);
+        */
+        }
+    | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER
+{
+        //TODO: ADD
+        /*
+        $$.nextList = cbf.merge($4.falseList, $6.nextList);
+        $$.nextList = cbf.merge($$.nextList, $7.nextList);
+        $$.breakList = $6.breakList;
+        $$.contList = $6.contList;
+        */
+}
+    | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER ELSE
+     {
+        _stack.push_scope();
+
+        //TODO: ADD
+        /*
+        $$.nextList = $7.nextList;
+        string label = cbf.genLabel();
+        cbf.bpatch($4.falseList, label);
+        */
+    } 
+     
+     Statement 
+    {
+        _stack.pop_scope();
+        
+        //TODO: ADD
+        /*
+        int line = cbf.emit("br label @");
+        auto temp = cbf.merge(cbf.makelist({line, FIRST}), $6.nextList);
+        temp = cbf.merge(temp, $9.nextList);
+        $$.nextList = cbf.merge(temp, $10.nextList);
+        $$.breakList = cbf.merge($6.breakList, $10.breakList);
+        $$.contList = cbf.merge($6.contList, $10.contList);
+        */
+    }
+    
+    
+    | WHILE 
+    {
+        _stack.push_scope();_stack.updateInWhile(true);
+        //TODO: ADD
+        /*
+        //NIKITA'S COMMENT: There must be a jump to a label BEFORE it definition....:
+        int line = cbf.emit("br label @");
+        $$.label = cbf.genLabel();
+        cbf.bpatch(cbf.makelist({line, FIRST}), $$.label);
+        */
+    } 
+    LPAREN Exp 
+    { 
+        if(notBool($4.type)) errorMismatch(yylineno);
+        //TODO: ADD
+        /*
+        resolveJumpToNextLine(&($4));
+        $$.label = cbf.genLabel();
+        cbf.bpatch($4.trueList, $$.label);
+        */
+    } 
+    RPAREN Statement 
+    {
+        _stack.updateInWhile(false);
+        _stack.pop_scope();
+        
+        //TODO: ADD
+        /*
+        cbf.bpatch($7.contList, $2.label);
+        cbf.bpatch($7.nextList, $2.label);
+        $$.nextList = cbf.merge($4.falseList, $7.breakList);
+        cbf.emit("br label %" + $2.label);
+        */
+
+    }
+    | BREAK SC 
+    { 
+        if(!_stack.inWhileLoop()) errorUnexpectedBreak(yylineno);
+                
+        //TODO: ADD
+        /*        
+        $$.breakList = cbf.makelist({cbf.emit("br label @"), FIRST});
+        */
+    }
+    | CONTINUE SC { 
+        if(!_stack.inWhileLoop()) errorUnexpectedContinue(yylineno);
+        //TODO: ADD
+        /*
+        $$.contList = cbf.makelist({cbf.emit("br label @"), FIRST});
+        */
+        }
     ;
 
 Call
     : ID LPAREN ExpList RPAREN { 
-        //when calling a function, we need to find exactly one function that fit the call.
         _stack.validateCall(string($1.name), string($3.type), yylineno);
         $$.name = $1.name; 
         $$.type = _stack.getFuncReturnType(string($1.name),string($3.type)).data();
+        //TODO: REFRENCE
+        /*
+        functionCallGenerate(...);
+        */
     }
-    | ID LPAREN RPAREN { 
+    | ID LPAREN RPAREN 
+    { 
         _stack.validateCall(string($1.name), "",yylineno);
         $$.name = $1.name; 
         $$.type = _stack.getFuncReturnType($1.name,"").data();
+        //TODO: ADD
+        /*
+        $$.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
+        $$.startLabel = cbf.genLabel();        
+        $$.varInitLabel = $$.startLabel; 
+        string str_name($1.name);
+        string call_str = "call " + typeToLLVMType($$.type) + " @" + str_name + "()";
+        $$.label = call_str;
+        */
+
     }
     ;
 NEW_SCOPE_MARKER 
     : /*epsilon*/{_stack.push_scope();}
     ;
 POP_SCOPE_MARKER
-    : /*epsilon*/ {_stack.pop_scope();}
+    : /*epsilon*/ 
+    {
+        _stack.pop_scope();
+        //TODO: ADD
+        /*
+        int line = cbf.emit("br label @");
+        $$.nextList = cbf.makelist({line, FIRST});
+        */
+    }
     ;
 CHECK_TYPE_MARKER
-    : Exp {if(notBool($1.type)) errorMismatch(yylineno); }
+    : Exp {
+        if(notBool($1.type)) errorMismatch(yylineno);
+        //TODO: ADD
+        /*
+        resolveJumpToNextLine(&($1));
+        int line = cbf.emit("br label @");
+        string label = cbf.genLabel();
+        cbf.bpatch(cbf.makelist({line, FIRST}), label);
+        cbf.bpatch($1.trueList, label);
+        $$.falseList = $1.falseList;
+        $$.trueList = $1.trueList;
+        */
+        }
     ;
 ExpList
-    : Exp {  $$.type = $1.type; }
-    | Exp COMMA ExpList { $$.type = join(join($1.type, ","),$3.type);  }
+    : Exp 
+    { 
+    $$.type = $1.type; 
+    //TODO: ADD
+    /*
+    ($$.trueListList).push_back($1.trueList); 
+        ($$.falseListList).push_back($1.falseList);
+        if(($1.startLabel).length() == 0)
+            $1.startLabel = " ";
+        $$.startLabel = $1.startLabel;
+        $$.jumpList = $1.jumpList;
+        $$.varInitLabel = $1.varInitLabel;
+
+    */
+    }
+    | Exp COMMA ExpList 
+    {
+        //TODO: ADD
+        /*
+        resolveJumpToNextLine(&($3));
+        */
+
+        $$.type = join(join($1.type, ","),$3.type);
+        
+        //TODO: ADD
+        /*
+        $$.var = $1.var + "," + $3.var;
+        ($3.trueListList).insert(($3.trueListList).begin(), $1.trueList);
+        $$.trueListList = $3.trueListList;
+        ($3.falseListList).insert(($3.falseListList).begin(), $1.falseList);
+        $$.falseListList = $3.falseListList;
+        if(($1.startLabel).length() == 0)
+        $1.startLabel = " ";
+        $$.startLabel = $1.startLabel + "," + $3.startLabel;
+        $$.jumpList = $1.jumpList; 
+        $$.varInitLabel = $1.varInitLabel;
+        */
+    }
     ;
 
 Type
@@ -169,8 +442,13 @@ Type
     | BOOL { $$.type = $1.type; }
     ;
 
+//TODO: REFRENCE FOR ALL EXP->something
+/*
+*/
 Exp
-    : LPAREN Exp RPAREN {$$.type = $2.type;}
+    : LPAREN Exp RPAREN {
+        $$.type = $2.type;
+        }
     | Exp MD_BINOP Exp %prec MD_BINOP { if(notIntOrByte($1.type,$3.type)) errorMismatch(yylineno); $$.type = biggerType($1.type, $3.type); }
     | Exp PM_BINOP Exp %prec PM_BINOP { if(notIntOrByte($1.type,$3.type)) errorMismatch(yylineno); $$.type = biggerType($1.type, $3.type); }
     | ID {_stack.validateId(string($1.name),yylineno); $$.type = _stack.getType(string($1.name)).data();}

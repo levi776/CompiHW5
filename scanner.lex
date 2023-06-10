@@ -53,10 +53,10 @@ continue                                                                        
 \{                                                                                  return LBRACE;
 \}                                                                                  return RBRACE;
 =                                                                                   return ASSIGN;
-{relop}                                                                             return RE_RELOP;
-{eqop}                                                                              return EQ_RELOP;
-{md_binop}                                                                          return MD_BINOP;
-{pm_binop}                                                                          return PM_BINOP;
+{relop}                                                                             {add_name_att(yytext); return RE_RELOP;}
+{eqop}                                                                              {add_name_att(yytext); return EQ_RELOP;}
+{md_binop}                                                                          {add_name_att(yytext); return MD_BINOP;}
+{pm_binop}                                                                          {add_name_att(yytext); return PM_BINOP;}
 {id}                                                                                {add_name_att(yytext);return ID;}                                                                      
 {num}                                                                               {add_type_att("INT");add_intVal_att(atoi(yytext));add_strVal_att(yytext); return NUM;}    
 {string}                                                                            {add_type_att("STRING");add_strVal_att(yytext); return STRING;}

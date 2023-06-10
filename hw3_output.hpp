@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include "bp.hpp"
 using namespace std;
 
 typedef struct token_att {
@@ -10,6 +11,25 @@ typedef struct token_att {
     char* strVal;
     char* type;
     char* name;
+
+    //TODO: 
+    /*
+    string var;   
+    vector<pair<int,BranchLabelIndex>> trueList;
+    vector<pair<int,BranchLabelIndex>> falseList;
+    vector<pair<int,BranchLabelIndex>> nextList;
+
+    vector<vector<pair<int,BranchLabelIndex>>> trueListList;
+    vector<vector<pair<int,BranchLabelIndex>>> falseListList;
+
+    vector<pair<int,BranchLabelIndex>> jumpList;
+    string startLabel;
+    string varInitLabel;
+
+    vector<pair<int,BranchLabelIndex>> breakList;
+    vector<pair<int,BranchLabelIndex>> contList;
+    string label;
+    */
     } tokenAtt;
 #define YYSTYPE tokenAtt
 
