@@ -6,12 +6,30 @@ using namespace std;
 
 bool replace(string& str, const string& from, const string& to, const BranchLabelIndex index);
 
-CodeBuffer::CodeBuffer() : buffer(), globalDefs() {}
+CodeBuffer::CodeBuffer() : buffer(), globalDefs()
+//TODO:
+/*
+ , tab(0)
+ */
+ {}
 
 CodeBuffer &CodeBuffer::instance() {
 	static CodeBuffer inst;//only instance
 	return inst;
 }
+
+//TODO:
+/*
+void CodeBuffer::addIndent()
+{
+	tab++;
+}
+
+void CodeBuffer::removeIndent()
+{
+	tab--;
+}
+ */
 
 string CodeBuffer::genLabel(){
 	std::stringstream label;
@@ -24,7 +42,14 @@ string CodeBuffer::genLabel(){
 }
 
 int CodeBuffer::emit(const string &s){
-    buffer.push_back(s);
+    //TODO: REPLACE ALL
+	/*
+	string indent(tab * 2, ' ');
+    buffer.push_back(indent + s);
+	return buffer.size() - 1;
+	*/
+	
+	buffer.push_back(s);
 	return buffer.size() - 1;
 }
 

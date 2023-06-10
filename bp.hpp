@@ -18,6 +18,11 @@ class CodeBuffer{
 	std::vector<std::string> globalDefs;
 public:
 	static CodeBuffer &instance();
+	//TODO:
+	/*
+	void addIndent();
+	void removeIndent();
+	*/
 
 	// ******** Methods to handle the code section ******** //
 
