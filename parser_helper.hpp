@@ -144,7 +144,31 @@ void varDefintionGenerate(string type){
         cbf.emit(var_name + " = alloca i32");        
         cbf.emit("store i32 " + reg_from +", i32* " + var_name);
       }
+void varDefintionAndAssignmentGenerate(string llvm_var, string exp_llvm_name, string exp_type,
+vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIndex>>& exp_false_list){
+        string llvm_var_name = llvm_var;
+        string reg_from = exp_llvm_name;
+        if(exp_type == "BOOL")
+        {
+            string true_label = cbf.genLabel();
+            int true_line = cbf.emit("br label @");
+            string false_label = cbf.genLabel();
+            int false_line = cbf.emit("br label @");
+            string next_label = cbf.genLabel();
 
+            bpVector(cbf.makelist({true_line, FIRST}), next_label);
+            bpVector(cbf.makelist({false_line, FIRST}), next_label);
+            bpVector(exp_true_list, true_label);
+            bpVector(exp_false_list, false_label);
+
+            string reg_phi = rgs.freshVar();
+            cbf.emit(reg_phi + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
+            reg_from = reg_phi;
+        }
+
+        cbf.emit(llvm_var_name + " = alloca i32");
+        cbf.emit("store i32 " + reg_from + ", i32* " + llvm_var_name);
+    }
 string opcode_to_cmd(string op, string type){
 
     bool is_signed = (type == "INT");
@@ -196,7 +220,7 @@ string opcode_to_cmd(string op, string type){
     }
     return to_ret;
 }
-void resolveJumpToNextLine(string startLabel) //think about better name than token
+void resolve_jump_next_line(string startLabel) //think about better name than token
 {
     vector<string> labels_vec = parseString(startLabel);
     if(labels_vec.size() > 0){

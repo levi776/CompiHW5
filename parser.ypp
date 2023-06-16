@@ -32,7 +32,7 @@
 //TODO:ADD SOME OF THE FUNCTIONS BELOW
 /*
     std::string opToCommandName(const char* op, const char* type); //added on parser_helper 
-    void resolveJumpToNextLine(E* exp); //added on parser_helper
+    void resolve_jump_next_line(E* exp); //added on parser_helper
     bool notLastBool(vector<string>::iterator it, vector<string>::iterator end);
 */
 
@@ -181,17 +181,13 @@ Statement
             errorMismatch(yylineno);
         }
         string llvm_name = rgs.freshVar(string($2.name),false);
-        $2.type=$1.type; _stack.insert($2.name , $2.type,llvm_name, false, false, yylineno);
-        //TODO: REFRENCE
-        /*
-        varDefintionAndAssignmentGenerate(/**/),
-                             /**/,
-                             /**/,
-                             /**/,
-                             /**/,
-                             /**/,
-                             /**/));
-        */
+        $2.type=$1.type; _stack.insert($2.name , $2.type,llvm_name, false, false, yylineno);     
+        varDefintionAndAssignmentGenerate(/*llvm_var*/llvm_name,),
+                             /*exp_llvm_name*/$4.llvm_name,
+                             /*exp_type*/string($4.type),   
+                             /*exp_true_list*/$4.trueList,
+                             /*exp_false_list*/$4.falseList);
+        
     }
     | ID ASSIGN {
         if(!_stack.nameExists($1.name) || _stack.isFunc($1.name)) errorUndef(yylineno, $1.name);
@@ -214,7 +210,7 @@ Statement
       $$.var = rgs.freshVar();
       //TODO: refference
       
-      resolveJumpToNextLine(string($1.startLabel));
+      resolve_jump_next_line(string($1.startLabel));
       cbf.emit($1.label);
        }
     | RETURN SC { 
@@ -232,8 +228,7 @@ Statement
         */
         }
     | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER
-{
-       
+{    
         $$.nextList = cbf.merge($4.falseList, $6.nextList);
         $$.nextList = cbf.merge($$.nextList, $7.nextList);
         $$.breakList = $6.breakList;
@@ -275,7 +270,7 @@ Statement
         if(notBool($4.type)) errorMismatch(yylineno);
         //TODO: understand
         
-        resolveJumpToNextLine(string($4.startLabel));
+        resolve_jump_next_line(string($4.startLabel));
         
 
         $$.label = cbf.genLabel();
@@ -352,7 +347,7 @@ CHECK_TYPE_MARKER
     : Exp {
         if(notBool($1.type)) errorMismatch(yylineno);
         //TODO: UNDERSTAND
-        resolveJumpToNextLine(string($1.startLabel));
+        resolve_jump_next_line(string($1.startLabel));
         int line = cbf.emit("br label @");
         string label = cbf.genLabel();
         bpVector(cbf.makelist({line, FIRST}), label);
@@ -380,7 +375,7 @@ ExpList
     {
         //TODO: ADD and Understand
         
-        resolveJumpToNextLine(string($3.startLabel));
+        resolve_jump_next_line(string($3.startLabel));
         
 
         $$.type = join(join($1.type, ","),$3.type);
@@ -432,7 +427,7 @@ Exp
           }
     | Exp PM_BINOP Exp %prec PM_BINOP {
          if(notIntOrByte($1.type,$3.type)) errorMismatch(yylineno); $$.type = biggerType($1.type, $3.type);
-            resolveJumpToNextLine(string($3.startLabel));
+            resolve_jump_next_line(string($3.startLabel));
             $$.jumpList = $1.jumpList;
             $$.startLabel = $1.startLabel;
             $$.varInitLabel = $3.varInitLabel;
@@ -449,7 +444,6 @@ Exp
                 $$.var = new_reg;
             }
         }
-          }
     | ID {_stack.validateId(string($1.name),yylineno); $$.type = _stack.getType(string($1.name)).data();}
     | Call { $$.type=$1.type; }
     | NUM { $$.type=$1.type; 
@@ -509,7 +503,7 @@ Exp
         bpVector($1.trueList);}
     Exp { if(notBool($4.type)) errorMismatch(yylineno); 
             $$.type=$1.type; 
-            resolveJumpToNextLine(string($4.startLabel)); //TODO ADD and understand
+            resolve_jump_next_line(string($4.startLabel)); //TODO ADD and understand
             $$.jumpList = $1.jumpList;
             $$.startLabel = $1.startLabel;
             $$.varInitLabel = $3.varInitLabel; //might be a mistake?
@@ -519,7 +513,7 @@ Exp
     | Exp 
      OR {if(notBool($1.type) errorMismatch(yylineno); bpVector($1.falseList); } Exp {  notBool($4.type)) errorMismatch(yylineno); 
             $$.type=$1.type; 
-            resolveJumpToNextLine(string($4.startLabel)); //todo add and understand
+            resolve_jump_next_line(string($4.startLabel)); //todo add and understand
             $$.jumpList = $1.jumpList;
             $$.startLabel = $1.startLabel;
             $$.varInitLabel = $3.varInitLabel; //TODO seems like a mistake.
@@ -527,7 +521,7 @@ Exp
             $$.falseList = $4.falseList;
             $$.var = EMPTY_VAR;}
     | Exp EQ_RELOP Exp %prec EQ_RELOP { if(notIntOrByte($1.type,$3.type)) {errorMismatch(yylineno);} $$.type = "BOOL";
-        resolveJumpToNextLine(string($3.startLabel)); //todo add and understand.
+        resolve_jump_next_line(string($3.startLabel)); //todo add and understand.
         $$.jumpList = $1.jumpList;
         $$.startLabel = $1.startLabel;
         $$.varInitLabel = $3.varInitLabel;
@@ -538,7 +532,7 @@ Exp
         $$.falseList = cbf.makelist({branch_location, SECOND});
         $$.llvm_name = string(EMPTY_VAR); }
     | Exp RE_RELOP Exp %prec RE_RELOP { if(notIntOrByte($1.type,$3.type)) {errorMismatch(yylineno);} $$.type = "BOOL";
-        resolveJumpToNextLine(string($3.startLabel)); //TODO add and understand
+        resolve_jump_next_line(string($3.startLabel)); //TODO add and understand
         $$.jumpList = $1.jumpList;
         $$.startLabel = $1.startLabel;
         $$.varInitLabel = $3.varInitLabel;
