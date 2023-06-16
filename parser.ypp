@@ -6,6 +6,7 @@
     #include "symbol_tables_stack.hpp"
     #include "registers.hpp"
     #include "bp.hpp"
+    #include "parser_helper.hpp"
     //TODO:
     /*
     #define EMPTY_VAR "EMPTY"
@@ -30,13 +31,9 @@
 
 //TODO:ADD SOME OF THE FUNCTIONS BELOW
 /*
-    vector<string> charToVector(const char* list);
-    std::string typeToLLVMType(const char* type);
     std::string opToCommandName(const char* op, const char* type);
     void resolveJumpToNextLine(E* exp);
     bool notLastBool(vector<string>::iterator it, vector<string>::iterator end);
-    CodeBuffer& cbf = CodeBuffer::instance();
-    Registers& rgs = Registers::instance();
 */
 
 
@@ -86,18 +83,13 @@
 
 %%
 Program
-    : {//TODO: /*GO TO REFRENCE!*/}
+    : {initDeclarations()}
     Funcs {
         if (yychar == YYEOF) {
             _stack.validateMainFunction(yylineno);
             _stack.pop_scope();
-            //TODO:
-            /*
-            cbf.printGlobalBuffer();
-            cbf.printCodeBuffer();
-            */
-        }
-        
+            printGlobalAndCodeBuffer()
+        }    
     }
     ;
 
@@ -110,22 +102,18 @@ FuncDecl
     : OverRide RetType ID LPAREN Formals
     { 
         _stack.insert(string($3.name), string(join(join($5.type ,"->"),$2.type)), true, $1.intVal, yylineno);
-        //TODO:REFRENCE
-        /*
-        cbf.formalsFuncGenerator(...);
-        */
-    
+        declareFunction(/*is_override =*/ $1.intVal,
+                        /*func_name=*/ string($3.name),
+                        /*func_arguments_type_string=*/ string($5.type),
+                        /*func_arguments_type_string=*/ string($5.name)); 
     }
     RPAREN LBRACE 
     {_stack.push_scope();_stack.symbol_table_add_function_parameter_entries(string($5.name), string($5.type), yylineno);} 
     Statements RBRACE 
-    {_stack.pop_scope();
-    
-    //TODO: REFRENCE
-    /*
-    cbf.funcDeclGen(...);
-    */
-    
+    {
+        _stack.pop_scope();
+        
+        closeFunction(/*nextlist=*/$10.nextList, /*func_return_type=*/  string($2.type));
     }
     ;
 OverRide
@@ -492,7 +480,6 @@ bool byteTooLarge(int value)
 }
 bool typesDontMatch(  char* LHS_type,  char* RHS_type)
 {
-    //printf("val:%d\n",strcmp(LHS_type,RHS_type));
     if (strcmp(LHS_type,RHS_type)!=0 && ( (strcmp(LHS_type,"INT")!=0) || (strcmp(RHS_type,"BYTE")!=0) ) )
     {
         return true;
