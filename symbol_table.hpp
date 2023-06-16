@@ -1,6 +1,6 @@
 #ifndef COMPIHW3symbol_table__
 #define COMPIHW3symbol_table__
-#endif
+
 #include "table_entry.hpp"
 
 //using namespace std;
@@ -15,8 +15,8 @@ public:
     {
         if(is_global_scope)
         {
-            table_entry* print_func_entry = new table_entry("print", 0, "STRING->VOID",true, false);
-            table_entry* printi_func_entry = new table_entry("printi", 0, "INT->VOID",true, false);
+            table_entry* print_func_entry = new table_entry("print", 0,"STRING->VOID",true, false,"@print");
+            table_entry* printi_func_entry = new table_entry("printi", 0, "INT->VOID",true, false,"@printi");
             this->entries.push_back(print_func_entry);
             this->entries.push_back(printi_func_entry);
         }
@@ -138,3 +138,4 @@ public:
         }
     }
 };
+#endif

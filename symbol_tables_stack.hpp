@@ -1,6 +1,6 @@
 #ifndef COMPIHW3symbol_table_stack__
 #define COMPIHW3symbol_table_stack__
-#endif
+
 #include "symbol_table.hpp"
 
 #include <stack>
@@ -235,7 +235,7 @@ class symbol_tables_stack{
                     //cout << "add function parameters:" <<parameter_names<<" "<<type<< endl;
                     output::errorDef(yylineno, names_vec.at(param));
                 }
-                this->top_scope()->insert(names_vec.at(param), types_vec.at(param), -(param + 1), false, false);
+                this->top_scope()->insert(names_vec.at(param), types_vec.at(param),"%"+ names_vec.at(param), -(param + 1), false, false);
             }
             
         }
@@ -423,3 +423,4 @@ class symbol_tables_stack{
                 output::errorUndef(yylineno, name);
         }
 };
+#endif

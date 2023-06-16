@@ -12,22 +12,29 @@ typedef struct token_att {
     char* type;
     char* name;
     string llvm_name; // name in llvm (var in refference TODO delete this comment)
-    //TODO: 
-    /* 
     vector<pair<int,BranchLabelIndex>> trueList;
     vector<pair<int,BranchLabelIndex>> falseList;
     vector<pair<int,BranchLabelIndex>> nextList;
-
-    vector<vector<pair<int,BranchLabelIndex>>> trueListList;
-    vector<vector<pair<int,BranchLabelIndex>>> falseListList;
-
-    vector<pair<int,BranchLabelIndex>> jumpList;
-    string startLabel;
-    string varInitLabel;
-
     vector<pair<int,BranchLabelIndex>> breakList;
     vector<pair<int,BranchLabelIndex>> contList;
+    string startLabel;
+    string varInitLabel;
+    vector<pair<int,BranchLabelIndex>> jumpList;
+     vector<vector<pair<int,BranchLabelIndex>>> trueListList;
+    vector<vector<pair<int,BranchLabelIndex>>> falseListList;
     string label;
+    //TODO: 
+    /* 
+    
+    
+
+   
+
+    
+    
+
+    
+    
     */
     } tokenAtt;
 #define YYSTYPE tokenAtt

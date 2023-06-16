@@ -2,8 +2,6 @@
 #define REGISTER_HPP
 
 
-#ifndef REGISTERS_HPP
-#define REGISTERS_HPP
 
 #include <string>
 

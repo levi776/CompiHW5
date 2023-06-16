@@ -1,6 +1,6 @@
 #ifndef COMPIHW3table_entry__
 #define COMPIHW3table_entry__
-#endif
+
 //this class/struct remsembles an entry in symbol table.
 #include <string>
 #include <iostream>
@@ -89,3 +89,4 @@ class table_entry
     }
 
 };
+#endif

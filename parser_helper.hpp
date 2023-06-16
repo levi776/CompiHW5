@@ -2,14 +2,15 @@
 #define PARSER_HELPER_HPP
 #include <iostream>
 #include "hw3_output.hpp"
-#include "symtab.hpp"
+#include "symbol_tables_stack.hpp"
 #include <string.h>
-#include "registers.hpp"
+#include "register.hpp"
 #include "bp.hpp"
 #include <map>
 CodeBuffer& cbf = CodeBuffer::instance();
 Registers& rgs = Registers::instance();
-
+void bpVector(vector<pair<int,BranchLabelIndex>>, string);
+vector<string> parseString(string);
 string convertToLLVMType(string type)
 {
     if(type == "INT" || type == "BOOL" || type == "BYTE"){
@@ -27,25 +28,7 @@ string convertToLLVMType(string type)
 
 void initDeclarations()
 {
-    cbf.emit("@.error = constant [23 x i8] c\"Error division by zero\\00\"\n
-    declare i32 @printf(i8*, ...)\n
-    declare void @exit(i32)\n
-    @.int_specifier = constant [4 x i8] c\"\%d\\0A\\00\"\n
-    @.str_specifier = constant [4 x i8] c\"\%s\\0A\\00\"\n
-    
-    define void @printi(i32) 
-    {\n
-        %spec_ptr = getelementptr [4 x i8], [4 x i8]* @.int_specifier, i32 0, i32 0\n
-        call i32 (i8*, ...) @printf(i8* %spec_ptr, i32 %0)\n
-        ret void \n
-    }\n
-    
-    define void @print(i8*) 
-    {\n
-        %spec_ptr = getelementptr [4 x i8], [4 x i8]* @.str_specifier, i32 0, i32 0\n
-        call i32 (i8*, ...) @printf(i8* %spec_ptr, i8* %0)\n
-        ret void\n
-    }");
+    cbf.emit("@.error = constant [23 x i8] c\"Error division by zero\\00\"\ndeclare i32 @printf(i8*, ...)\ndeclare void @exit(i32)\n@.int_specifier = constant [4 x i8] c\"\%d\\0A\\00\"\n@.str_specifier = constant [4 x i8] c\"\%s\\0A\\00\"\ndefine void @printi(i32) {\n%spec_ptr = getelementptr [4 x i8], [4 x i8]* @.int_specifier, i32 0, i32 0\ncall i32 (i8*, ...) @printf(i8* %spec_ptr, i32 %0)\nret void \n}\ndefine void @print(i8*) {\n%spec_ptr = getelementptr [4 x i8], [4 x i8]* @.str_specifier, i32 0, i32 0\ncall i32 (i8*, ...) @printf(i8* %spec_ptr, i8* %0)\nret void\n}");
 }
 
 void printGlobalAndCodeBuffer() 
@@ -63,7 +46,7 @@ void declareFunction(bool is_override, string func_name, string func_arguments_t
 
     vector<string> types_vec = parseString(func_arguments_type_string);
     vector<string> names_vec = parseString(func_arguments_name_string); 
-    
+    vector<string> load_params;
     for(auto type_iterator = types_vec.begin(), name_iterator = names_vec.begin(); type_iterator < types_vec.end(); type_iterator++, name_iterator++)
     {
         string type = convertToLLVMType(*type_iterator);
@@ -84,25 +67,48 @@ void declareFunction(bool is_override, string func_name, string func_arguments_t
         cbf.emit(load_param_str);
     }
 }
-
+vector<string> parseString(string str){
+  std::stringstream stream(str);
+  std::string segment(str);
+  std::vector<std::string> vec;
+  while(std::getline(stream, segment, ','))
+  {
+    vec.push_back(segment);
+  }
+  return vec;
+}
 void closeFunction(vector<pair<int,BranchLabelIndex>>& nextlist, string return_type)
 {
-    bpVector(nextlist);
+    bpVector(nextlist,"");
     /*if(!nextlist.empty())
     { 
         string label = cbf.genLabel();
         cbf.bpatch(nextlist, label); 
     }*/
     cbf.emit("ret ");
-    switch(return_type){
-    case "VOID": cbf.emit("void"); break;
-    case "INT": cbf.emit("ret i32 0"); break;
-    case "BYTE": cbf.emit("ret i32 0"); break;
-    case "BOOL": cbf.emit("ret i32 false"); break;
+    if(return_type == "VOID") 
+    {
+        cbf.emit("void}");
+        return;
     }
-    cbf.emit("}");
-}      
-void bpVector(vector<pair<int,BranchLabelIndex>>& nextlist,string f_label = ""){
+    if (return_type == "INT")
+    {
+         cbf.emit("ret i32 0}");
+         return;
+    }
+    if (return_type == "BYTE")
+    {
+         cbf.emit("ret i32 0}");
+          return;
+    }
+    if (return_type == "BOOL"){
+         cbf.emit("ret i32 false}");
+          return;
+    }
+    }
+
+     
+void bpVector(vector<pair<int,BranchLabelIndex>> nextlist,string f_label = ""){
     if(!nextlist.empty())
     { 
         string label;
@@ -116,7 +122,7 @@ void bpVector(vector<pair<int,BranchLabelIndex>>& nextlist,string f_label = ""){
         cbf.bpatch(nextlist, label); 
     }
 }     
-void varDefintionGenerate(string type){
+void varDefintionGenerate(string type, string var_name){
     //need to understand and change names but keep the logic
     string reg_from = "0";
     if (type == "BOOL")
@@ -155,9 +161,10 @@ vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIn
             string false_label = cbf.genLabel();
             int false_line = cbf.emit("br label @");
             string next_label = cbf.genLabel();
-
-            bpVector(cbf.makelist({true_line, FIRST}), next_label);
-            bpVector(cbf.makelist({false_line, FIRST}), next_label);
+            auto true_list = cbf.makelist({true_line, FIRST});
+            auto false_list = cbf.makelist({false_line, FIRST});
+            bpVector(true_list, next_label);
+            bpVector(false_list, next_label);
             bpVector(exp_true_list, true_label);
             bpVector(exp_false_list, false_label);
 
@@ -172,59 +179,49 @@ vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIn
 string opcode_to_cmd(string op, string type){
 
     bool is_signed = (type == "INT");
-    string to_ret;
-    switch(op){
-        case "+":  
+    string to_ret="";
+
+        if (op == "+"){
         to_ret = "add";
-        break;
-
-        case "-":
-        to_ret ="sub";
-        break;
-
-        case "*":
-        to_ret ="mul";
-        break;
-
-        case "/":
+        }
+        if (op == "-"){
+        to_ret = "sub";
+        }
+        if (op == "*"){
+        to_ret = "mul";
+        }
+        if (op == "/"){
         to_ret = (is_signed)? "sdiv" : "udiv" ;
-        break;
-
-        case "==":
-        to_ret = "eq" ;
-        break;
-
-        case "!=":
+        }
+        if (op == "=="){
+        to_ret = "eq";
+        }
+        if (op == "!="){
         to_ret = "ne";
-        break;
-
-        case ">":
+        }
+        if (op == ">"){
         to_ret = (is_signed)? "sgt" : "ugt" ; // un/signed greater than
-        break;
-
-        case ">=":
-        to_ret = (is_signed)? "sge" : "uge";
-        break;
-
-        case "<":
-        to_ret = (is_signed)? "slt" : "ult" ;
-        break;
-
-        case "<=":
-        to_ret = (is_signed)? "sle" : "ule" ;
-        break;
-
-        default:
-        to_ret ="";
-        break;
+        }
+        
+        if (op == ">="){
+        
+        to_ret = (is_signed)? "sge" : "uge" ; // un/signed greater than
+        }
+        if (op == "<"){
+        
+        to_ret = (is_signed)? "slt" : "ult" ; // un/signed greater than
+        }
+        if (op == "<="){
+        to_ret = (is_signed)? "sle" : "sle" ; // un/signed greater than
+        }
+        return to_ret;
     }
-    return to_ret;
-}
-void resolve_jump_next_line(string startLabel) //think about better name than token
+
+void resolve_jump_next_line(string startLabel,vector<pair<int,BranchLabelIndex>>& jump_list) //think about better name than token
 {
     vector<string> labels_vec = parseString(startLabel);
     if(labels_vec.size() > 0){
-    cbf.bpatch(token->jumpList, labels_vec.at(0));
+    cbf.bpatch(jump_list, labels_vec.at(0));
     }
 }
 #endif 
