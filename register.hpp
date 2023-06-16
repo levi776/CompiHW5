@@ -1,8 +1,7 @@
 #ifndef REGISTER_HPP
 #define REGISTER_HPP
 
-//TODO: 
-/*
+
 #ifndef REGISTERS_HPP
 #define REGISTERS_HPP
 
@@ -28,5 +27,5 @@ public:
         return prefix + var_name + "_" + std::to_string(num_registers++);
     }
 };
-*/
+
 #endif
