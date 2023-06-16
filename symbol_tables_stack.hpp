@@ -80,7 +80,7 @@ class symbol_tables_stack{
         {
             //TODO: Maybe tab should be initialized to -1 in the CodeBuffer.
            /*
-           CodeBuffer::instance().addIndent();
+           CodeBuffer::instance().inc_tab();
            */
 
             bool is_in_while_inherited_from_father = false;
@@ -105,7 +105,7 @@ class symbol_tables_stack{
         void pop_scope(){
             //TODO:
             /*
-            CodeBuffer::instance().removeIndent();
+            CodeBuffer::instance().dec_tab();
             */
                         
             // unless you want to make it super complicated, this stays this way!
@@ -121,7 +121,8 @@ class symbol_tables_stack{
         }
         
         //COMMENT: maybe we would like to add another parameter VAR
-        void insert(string name, string type, bool is_func, bool is_override,int yylineno)
+        //answer : var is the name in llvm
+        void insert(string name, string type,string llvm_name, bool is_func, bool is_override,int yylineno)
         {
             assert(this->top_scope() != nullptr);
             symbol_table* table = this->top_scope();
@@ -145,7 +146,7 @@ class symbol_tables_stack{
                         output::errorDef(yylineno, "main");
                         }
                         else{
-                        table->insert("main", type, 0, is_func, is_override);   
+                        table->insert("main", type, llvm_name, 0, is_func, is_override);   
                         }
             }
             }
@@ -159,7 +160,7 @@ class symbol_tables_stack{
                 {   
                     int offset = this->offsets.top();
                     this->offsets.pop();
-                    table->insert(name, type, offset, is_func,is_override);
+                    table->insert(name, type, llvm_name, offset, is_func,is_override);
                     this->offsets.push(offset+1);
                 }
                 else{
@@ -193,12 +194,12 @@ class symbol_tables_stack{
                                 output::errorDef(yylineno, name);
                              }
                         }
-                        table->insert(name, type, 0 ,is_func ,is_override);//no errors until now
+                        table->insert(name, type, llvm_name, 0 ,is_func ,is_override);//no errors until now
                     }
                 }
                 else
                 {
-                    table->insert(name, type, 0, is_func ,is_override);
+                    table->insert(name, type, llvm_name, 0, is_func ,is_override);
                 }
              }
             }

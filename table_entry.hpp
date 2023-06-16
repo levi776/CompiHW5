@@ -40,11 +40,12 @@ class table_entry
     public:
     string name;
     string type;
+    string name_at_llvm;
     int offset;
     bool is_func; // perhaps could be deprecated
     bool is_override;
-    table_entry(string name, int offset, string type ,bool is_func,bool is_override)
-        : name(name), offset(offset), type(type),is_func(is_func), is_override(is_override) {
+    table_entry(string name, int offset, string type ,bool is_func,bool is_override, string name_at_llvm )
+        : name(name), offset(offset), type(type),is_func(is_func), is_override(is_override), name_at_llvm(name_at_llvm) {
         if(this->is_func)
         {
             assert(this->offset == 0);
@@ -69,6 +70,9 @@ class table_entry
     bool isFunc()
     {
         return is_func;
+    }
+    string get_name_at_llvm(){
+        return this->name_at_llvm;
     }
     
     vector<string> fill_vector_func_params()

@@ -6,7 +6,7 @@
 #include <string.h>
 #include "registers.hpp"
 #include "bp.hpp"
-
+#include <map>
 CodeBuffer& cbf = CodeBuffer::instance();
 Registers& rgs = Registers::instance();
 
@@ -54,9 +54,9 @@ void printGlobalAndCodeBuffer()
     cbf.printCodeBuffer();
 }
 
-void declareFunction(bool is_override, string func_name, string func_arguments_type_string, string func_arguments_name_string)
+void declareFunction(bool is_override, string func_name, string func_arguments_type_string, string func_arguments_name_string, string fresh_func_name)
 {
-    string fresh_func_name = rgs.freshVar(func_name, /*is_global = */true);
+    //string fresh_func_name = rgs.freshVar(func_name, /*is_global = */true); -> this is now created in parser.ypp
 
     int cnt = 0;
     string arguments = "";
@@ -87,11 +87,12 @@ void declareFunction(bool is_override, string func_name, string func_arguments_t
 
 void closeFunction(vector<pair<int,BranchLabelIndex>>& nextlist, string return_type)
 {
-    if(!nextlist.empty())
+    bpVector(nextlist);
+    /*if(!nextlist.empty())
     { 
         string label = cbf.genLabel();
         cbf.bpatch(nextlist, label); 
-    }
+    }*/
     cbf.emit("ret ");
     switch(return_type){
     case "VOID": cbf.emit("void"); break;
@@ -101,8 +102,105 @@ void closeFunction(vector<pair<int,BranchLabelIndex>>& nextlist, string return_t
     }
     cbf.emit("}");
 }      
-      
-    
+void bpVector(vector<pair<int,BranchLabelIndex>>& nextlist,string f_label = ""){
+    if(!nextlist.empty())
+    { 
+        string label;
+        if(f_label == "")
+        {
+         label = cbf.genLabel();
+        }
+        else {
+            label = f_label;
+        }
+        cbf.bpatch(nextlist, label); 
+    }
+}     
+void varDefintionGenerate(string type){
+    //need to understand and change names but keep the logic
+    string reg_from = "0";
+    if (type == "BOOL")
+        {
+          int false_line = cbf.emit("br label @");
+          int true_line = cbf.emit("br label @");
 
+          string true_label = cbf.genLabel();
+          int true_line_to_next = cbf.emit("br label @");
+          string false_label = cbf.genLabel();
+          int false_line_to_next = cbf.emit("br label @");
+          
+          string next_label = cbf.genLabel();
 
+          cbf.bpatch(cbf.makelist({false_line, FIRST}), false_label);
+          cbf.bpatch(cbf.makelist({true_line, FIRST}), true_label);
+
+          cbf.bpatch(cbf.makelist({true_line_to_next, FIRST}), next_label);
+          cbf.bpatch(cbf.makelist({false_line_to_next, FIRST}), next_label);
+
+          string reg_phi = rgs.freshVar();//for this we need the ig?
+          cbf.emit(reg_phi + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
+          reg_from = reg_phi;
+        }
+        cbf.emit(var_name + " = alloca i32");        
+        cbf.emit("store i32 " + reg_from +", i32* " + var_name);
+      }
+
+string opcode_to_cmd(string op, string type){
+
+    bool is_signed = (type == "INT");
+    string to_ret;
+    switch(op){
+        case "+":  
+        to_ret = "add";
+        break;
+
+        case "-":
+        to_ret ="sub";
+        break;
+
+        case "*":
+        to_ret ="mul";
+        break;
+
+        case "/":
+        to_ret = (is_signed)? "sdiv" : "udiv" ;
+        break;
+
+        case "==":
+        to_ret = "eq" ;
+        break;
+
+        case "!=":
+        to_ret = "ne";
+        break;
+
+        case ">":
+        to_ret = (is_signed)? "sgt" : "ugt" ; // un/signed greater than
+        break;
+
+        case ">=":
+        to_ret = (is_signed)? "sge" : "uge";
+        break;
+
+        case "<":
+        to_ret = (is_signed)? "slt" : "ult" ;
+        break;
+
+        case "<=":
+        to_ret = (is_signed)? "sle" : "ule" ;
+        break;
+
+        default:
+        to_ret ="";
+        break;
+    }
+    return to_ret;
+}
+void resolveJumpToNextLine(string startLabel) //think about better name than token
+{
+    vector<string> labels_vec = parseString(startLabel);
+    if(labels_vec.size() > 0){
+    cbf.bpatch(token->jumpList, labels_vec.at(0));
+    }
+}
 #endif 

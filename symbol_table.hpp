@@ -28,9 +28,9 @@ public:
     bool get_in_while(){
         return this->in_while;
     }
-    void insert(string name,string type,int offset, bool is_func, bool is_override){
+    void insert(string name,string type,string llvm_name, int offset, bool is_func, bool is_override){
        
-                table_entry *new_entry = new table_entry(name, offset, type, is_func, is_override);
+                table_entry *new_entry = new table_entry(name, offset, type, is_func, is_override, llvm_name);
                 //printf("in insert before push back: %s\n", name.data());
                 entries.push_back(new_entry);
                 //printf("in insert after push back: %s\n", name.data());

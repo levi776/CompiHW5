@@ -2,34 +2,28 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <assert.h>
 using namespace std;
 
 bool replace(string& str, const string& from, const string& to, const BranchLabelIndex index);
 
-CodeBuffer::CodeBuffer() : buffer(), globalDefs()
-//TODO:
-/*
- , tab(0)
- */
- {}
+CodeBuffer::CodeBuffer() : buffer(), globalDefs(), tab(0){}
 
 CodeBuffer &CodeBuffer::instance() {
 	static CodeBuffer inst;//only instance
 	return inst;
 }
 
-//TODO:
-/*
-void CodeBuffer::addIndent()
+void CodeBuffer::inc_tab()
 {
-	tab++;
+	this->tab++;
 }
 
-void CodeBuffer::removeIndent()
+void CodeBuffer::dec_tab()
 {
-	tab--;
+	this->tab--;
 }
- */
+
 
 string CodeBuffer::genLabel(){
 	std::stringstream label;

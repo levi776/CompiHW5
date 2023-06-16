@@ -11,10 +11,9 @@ typedef struct token_att {
     char* strVal;
     char* type;
     char* name;
-
+    string llvm_name; // name in llvm (var in refference TODO delete this comment)
     //TODO: 
-    /*
-    string var;   
+    /* 
     vector<pair<int,BranchLabelIndex>> trueList;
     vector<pair<int,BranchLabelIndex>> falseList;
     vector<pair<int,BranchLabelIndex>> nextList;

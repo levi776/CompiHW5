@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <string>
-
+#include <map>
 using namespace std;
 
 //this enum is used to distinguish between the two possible missing labels of a conditional branch in LLVM during backpatching.
@@ -16,13 +16,13 @@ class CodeBuffer{
     void operator=(CodeBuffer const&);
 	std::vector<std::string> buffer;
 	std::vector<std::string> globalDefs;
+	int tab;
 public:
 	static CodeBuffer &instance();
-	//TODO:
-	/*
-	void addIndent();
-	void removeIndent();
-	*/
+
+	void inc_tab();
+	void dec_tab();
+
 
 	// ******** Methods to handle the code section ******** //
 

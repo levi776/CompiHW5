@@ -31,8 +31,8 @@
 
 //TODO:ADD SOME OF THE FUNCTIONS BELOW
 /*
-    std::string opToCommandName(const char* op, const char* type);
-    void resolveJumpToNextLine(E* exp);
+    std::string opToCommandName(const char* op, const char* type); //added on parser_helper 
+    void resolveJumpToNextLine(E* exp); //added on parser_helper
     bool notLastBool(vector<string>::iterator it, vector<string>::iterator end);
 */
 
@@ -101,18 +101,19 @@ Funcs
 FuncDecl
     : OverRide RetType ID LPAREN Formals
     { 
-        _stack.insert(string($3.name), string(join(join($5.type ,"->"),$2.type)), true, $1.intVal, yylineno);
+        string llvm_name = rgs.freshVar(string($3.name),true); 
+        _stack.insert(string($3.name), string(join(join($5.type ,"->"),$2.type)),llvm_name, true, $1.intVal, yylineno);
         declareFunction(/*is_override =*/ $1.intVal,
                         /*func_name=*/ string($3.name),
                         /*func_arguments_type_string=*/ string($5.type),
-                        /*func_arguments_type_string=*/ string($5.name)); 
+                        /*func_arguments_type_string=*/ string($5.name),
+                        /*fresh_func_name*/ llvm_name); 
     }
     RPAREN LBRACE 
     {_stack.push_scope();_stack.symbol_table_add_function_parameter_entries(string($5.name), string($5.type), yylineno);} 
     Statements RBRACE 
     {
         _stack.pop_scope();
-        
         closeFunction(/*nextlist=*/$10.nextList, /*func_return_type=*/  string($2.type));
     }
     ;
@@ -143,62 +144,55 @@ FormalDecl
 Statements
     : Statement 
     {
-        //TODO: ADD
-        /*
         $$.nextList = $1.nextList;
         $$.breakList = $1.breakList;
         $$.contList = $1.contList;
-        */
         }
-    | Statements
+    | Statements 
+    { bpVector($1.nextList);} 
+     Statement 
     {
-        //TODO: add
-        /*
-        if(($1.nextList).size() > 0)
-        {
-          string label = cbf.genLabel();
-          cbf.bpatch($1.nextList, label);
-        }
-        */
-    } Statement 
-    {
-        //TODO: ADD
-        /*
         $$.nextList = $3.nextList; 
         $$.breakList = cbf.merge($1.breakList, $3.breakList);
         $$.contList = cbf.merge($1.contList, $3.contList);
-        */
         }
     ;
 Statement 
     : LBRACE {_stack.push_scope();} Statements RBRACE 
     {
         _stack.pop_scope();
-        //TODO: ADD
-        /*
         $$.nextList = $3.nextList;
         $$.breakList = $3.breakList;
         $$.contList = $3.contList;
-        */
     }
     | Type ID SC { 
-        _stack.insert($2.name , $1.type, false, false, yylineno);
+        string llvm_name = rgs.freshVar(string($2.name),false);
+        _stack.insert($2.name , $1.type, llvm_name, false, false, yylineno);
         $2.type=$1.type;
-        //TODO: REFRENCE
-        /*
-        varDefintionGenerate(...);
-        */
-        
+        $$.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
+        $$.startLabel = cbf.genLabel();
+        cbf.bpatch($$.jumpList, $$.startLabel);
+        varDefintionGenerate(/*varType*/string($1.type)); 
         }
     | Type ID ASSIGN Exp SC 
     {
-        if(typesDontMatch($1.type, $4.type)) errorMismatch(yylineno);
-        $2.type=$1.type; _stack.insert($2.name , $2.type, false, false, yylineno);
+        if(typesDontMatch($1.type, $4.type)) 
+        {
+            errorMismatch(yylineno);
+        }
+        string llvm_name = rgs.freshVar(string($2.name),false);
+        $2.type=$1.type; _stack.insert($2.name , $2.type,llvm_name, false, false, yylineno);
         //TODO: REFRENCE
         /*
-        varDefintionAndAssignmentGenerate(...);
+        varDefintionAndAssignmentGenerate(/**/),
+                             /**/,
+                             /**/,
+                             /**/,
+                             /**/,
+                             /**/,
+                             /**/));
         */
-        }
+    }
     | ID ASSIGN {
         if(!_stack.nameExists($1.name) || _stack.isFunc($1.name)) errorUndef(yylineno, $1.name);
         
@@ -215,13 +209,14 @@ Statement
         */
         }
     | Call SC {
-      //TODO: ADD
-      /*
+
       $$.type = $1.type;
       $$.var = rgs.freshVar();
-      resolveJumpToNextLine(&($1));
+      //TODO: refference
+      
+      resolveJumpToNextLine(string($1.startLabel));
       cbf.emit($1.label);
-      */ }
+       }
     | RETURN SC { 
         if(!isVoid()||_stack.getCurrentfunctionreturnType()!="VOID") errorMismatch(yylineno); 
         //TODO: ADD
@@ -238,97 +233,84 @@ Statement
         }
     | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER
 {
-        //TODO: ADD
-        /*
+       
         $$.nextList = cbf.merge($4.falseList, $6.nextList);
         $$.nextList = cbf.merge($$.nextList, $7.nextList);
         $$.breakList = $6.breakList;
         $$.contList = $6.contList;
-        */
 }
     | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER ELSE
      {
         _stack.push_scope();
-
-        //TODO: ADD
-        /*
         $$.nextList = $7.nextList;
-        string label = cbf.genLabel();
-        cbf.bpatch($4.falseList, label);
-        */
+        bpVector($4.falseList);
+
     } 
      
      Statement 
     {
+        //TODO: return to understand
         _stack.pop_scope();
-        
-        //TODO: ADD
-        /*
         int line = cbf.emit("br label @");
         auto temp = cbf.merge(cbf.makelist({line, FIRST}), $6.nextList);
         temp = cbf.merge(temp, $9.nextList);
         $$.nextList = cbf.merge(temp, $10.nextList);
         $$.breakList = cbf.merge($6.breakList, $10.breakList);
         $$.contList = cbf.merge($6.contList, $10.contList);
-        */
+        
     }
     
     
     | WHILE 
     {
         _stack.push_scope();_stack.updateInWhile(true);
-        //TODO: ADD
-        /*
+        //TODO: understand
         //NIKITA'S COMMENT: There must be a jump to a label BEFORE it definition....:
         int line = cbf.emit("br label @");
         $$.label = cbf.genLabel();
-        cbf.bpatch(cbf.makelist({line, FIRST}), $$.label);
-        */
+        bpVector(cbf.makelist({line, FIRST}), string($$.label));
     } 
     LPAREN Exp 
     { 
         if(notBool($4.type)) errorMismatch(yylineno);
-        //TODO: ADD
-        /*
-        resolveJumpToNextLine(&($4));
+        //TODO: understand
+        
+        resolveJumpToNextLine(string($4.startLabel));
+        
+
         $$.label = cbf.genLabel();
-        cbf.bpatch($4.trueList, $$.label);
-        */
+        bpVector($4.trueList, string($$.label));
+        
     } 
     RPAREN Statement 
     {
+        //todo understand
         _stack.updateInWhile(false);
         _stack.pop_scope();
-        
-        //TODO: ADD
-        /*
-        cbf.bpatch($7.contList, $2.label);
-        cbf.bpatch($7.nextList, $2.label);
+        bpVector($7.contList,string($2.label));
+        bpVector($7.nextList,string($2.label));
         $$.nextList = cbf.merge($4.falseList, $7.breakList);
         cbf.emit("br label %" + $2.label);
-        */
+
 
     }
     | BREAK SC 
     { 
         if(!_stack.inWhileLoop()) errorUnexpectedBreak(yylineno);
                 
-        //TODO: ADD
-        /*        
+       
         $$.breakList = cbf.makelist({cbf.emit("br label @"), FIRST});
-        */
+        
     }
     | CONTINUE SC { 
         if(!_stack.inWhileLoop()) errorUnexpectedContinue(yylineno);
-        //TODO: ADD
-        /*
         $$.contList = cbf.makelist({cbf.emit("br label @"), FIRST});
-        */
         }
     ;
 
 Call
     : ID LPAREN ExpList RPAREN { 
+        //todo understand
         _stack.validateCall(string($1.name), string($3.type), yylineno);
         $$.name = $1.name; 
         $$.type = _stack.getFuncReturnType(string($1.name),string($3.type)).data();
@@ -339,18 +321,17 @@ Call
     }
     | ID LPAREN RPAREN 
     { 
+        //todo understand
         _stack.validateCall(string($1.name), "",yylineno);
         $$.name = $1.name; 
         $$.type = _stack.getFuncReturnType($1.name,"").data();
-        //TODO: ADD
-        /*
         $$.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
         $$.startLabel = cbf.genLabel();        
         $$.varInitLabel = $$.startLabel; 
         string str_name($1.name);
         string call_str = "call " + typeToLLVMType($$.type) + " @" + str_name + "()";
         $$.label = call_str;
-        */
+        
 
     }
     ;
@@ -360,57 +341,52 @@ NEW_SCOPE_MARKER
 POP_SCOPE_MARKER
     : /*epsilon*/ 
     {
+        //todo understand
         _stack.pop_scope();
-        //TODO: ADD
-        /*
         int line = cbf.emit("br label @");
         $$.nextList = cbf.makelist({line, FIRST});
-        */
+       
     }
     ;
 CHECK_TYPE_MARKER
     : Exp {
         if(notBool($1.type)) errorMismatch(yylineno);
-        //TODO: ADD
-        /*
-        resolveJumpToNextLine(&($1));
+        //TODO: UNDERSTAND
+        resolveJumpToNextLine(string($1.startLabel));
         int line = cbf.emit("br label @");
         string label = cbf.genLabel();
-        cbf.bpatch(cbf.makelist({line, FIRST}), label);
-        cbf.bpatch($1.trueList, label);
+        bpVector(cbf.makelist({line, FIRST}), label);
+        bpVector($1.trueList, label); // we want same label as before, hence do not delete label.
         $$.falseList = $1.falseList;
         $$.trueList = $1.trueList;
-        */
         }
     ;
 ExpList
     : Exp 
     { 
     $$.type = $1.type; 
-    //TODO: ADD
-    /*
-    ($$.trueListList).push_back($1.trueList); 
-        ($$.falseListList).push_back($1.falseList);
-        if(($1.startLabel).length() == 0)
-            $1.startLabel = " ";
-        $$.startLabel = $1.startLabel;
-        $$.jumpList = $1.jumpList;
-        $$.varInitLabel = $1.varInitLabel;
+    //TODO: understand
 
-    */
+    ($$.trueListList).push_back($1.trueList); 
+    ($$.falseListList).push_back($1.falseList);
+    if(($1.startLabel).length() == 0)
+            $1.startLabel = " ";
+    $$.startLabel = $1.startLabel;
+    $$.jumpList = $1.jumpList;
+    $$.varInitLabel = $1.varInitLabel;
+
     }
     | Exp COMMA ExpList 
     {
-        //TODO: ADD
-        /*
-        resolveJumpToNextLine(&($3));
-        */
+        //TODO: ADD and Understand
+        
+        resolveJumpToNextLine(string($3.startLabel));
+        
 
         $$.type = join(join($1.type, ","),$3.type);
         
-        //TODO: ADD
-        /*
-        $$.var = $1.var + "," + $3.var;
+
+        $$.var = $1.llvm_name + "," + $3.llvm_name;
         ($3.trueListList).insert(($3.trueListList).begin(), $1.trueList);
         $$.trueListList = $3.trueListList;
         ($3.falseListList).insert(($3.falseListList).begin(), $1.falseList);
@@ -420,7 +396,7 @@ ExpList
         $$.startLabel = $1.startLabel + "," + $3.startLabel;
         $$.jumpList = $1.jumpList; 
         $$.varInitLabel = $1.varInitLabel;
-        */
+
     }
     ;
 
@@ -435,23 +411,154 @@ Type
 */
 Exp
     : LPAREN Exp RPAREN {
+        //todo understand
         $$.type = $2.type;
+        $$.llvm_name = $2.llvm_name;
+        $$.trueList = $2.trueList;
+        $$.falseList = $2.falseList;
+        $$.jumpList = $2.jumpList;
+        $$.startLabel = $2.startLabel;
+        $$.varInitLabel = $2.varInitLabel;
         }
-    | Exp MD_BINOP Exp %prec MD_BINOP { if(notIntOrByte($1.type,$3.type)) errorMismatch(yylineno); $$.type = biggerType($1.type, $3.type); }
-    | Exp PM_BINOP Exp %prec PM_BINOP { if(notIntOrByte($1.type,$3.type)) errorMismatch(yylineno); $$.type = biggerType($1.type, $3.type); }
+    | Exp MD_BINOP Exp %prec MD_BINOP {
+         if(notIntOrByte($1.type,$3.type)) errorMismatch(yylineno); $$.type = biggerType($1.type, $3.type);
+         //TODO : understand
+            $$.jumpList = $1.jumpList;
+            $$.startLabel = $1.startLabel;
+            $$.varInitLabel = $3.varInitLabel;
+            $$.type = biggerType($1.type, $3.type);
+            //todo: add
+            //check_if_zero_division().
+          }
+    | Exp PM_BINOP Exp %prec PM_BINOP {
+         if(notIntOrByte($1.type,$3.type)) errorMismatch(yylineno); $$.type = biggerType($1.type, $3.type);
+            resolveJumpToNextLine(string($3.startLabel));
+            $$.jumpList = $1.jumpList;
+            $$.startLabel = $1.startLabel;
+            $$.varInitLabel = $3.varInitLabel;
+
+            $$.type = biggerType($1.type, $3.type);
+            $$.var = rgs.freshVar();
+            //TODO : ADD AND UNDERSTAND
+            //add opToCommandName
+            cbf.emit($$.var + " = " + opcode_to_cmd(string($2.name), string($$.type)) + " i32 " + $1.llvm_name + ", " + $3.llvm_name);
+            if(strcmp($$.type, "BYTE") == 0)
+            {
+                string new_reg = rgs.freshVar();
+                cbf.emit(new_reg + " = and i32 "+ $$.var +", 255");
+                $$.var = new_reg;
+            }
+        }
+          }
     | ID {_stack.validateId(string($1.name),yylineno); $$.type = _stack.getType(string($1.name)).data();}
     | Call { $$.type=$1.type; }
-    | NUM { $$.type=$1.type;  }
-    | NUM B {if(byteTooLarge($1.intVal)) {errorByteTooLarge(yylineno, $1.strVal);} $$.type=$2.type; }
-    | STRING { $$.type=$1.type; }
-    | TRUE { $$.type=$1.type; }
-    | FALSE { $$.type=$1.type; }
-    | NOT Exp { if(notBool($2.type)) errorMismatch(yylineno); $$.type=$2.type; }
-    | Exp AND Exp { if(notBool($1.type) || notBool($3.type)) errorMismatch(yylineno); $$.type=$1.type; }
-    | Exp OR Exp { if(notBool($1.type) || notBool($3.type)) errorMismatch(yylineno); $$.type=$1.type; }
-    | Exp EQ_RELOP Exp %prec EQ_RELOP { if(notIntOrByte($1.type,$3.type)) {errorMismatch(yylineno);} $$.type = "BOOL";}
-    | Exp RE_RELOP Exp %prec RE_RELOP { if(notIntOrByte($1.type,$3.type)) {errorMismatch(yylineno);} $$.type = "BOOL"; }
-    | LPAREN Type RPAREN Exp {if(notIntOrByte($2.type,$4.type)) errorMismatch(yylineno); $$.type = $2.type;}
+    | NUM { $$.type=$1.type; 
+        $$.type = $1.type;
+        $$.llvm_name = string($$.name); // might be incorret -> what the fuck is this TODO
+        $$.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
+        $$.startLabel = cbf.genLabel();
+        $$.varInitLabel = $$.startLabel; }
+    | NUM B {if(byteTooLarge($1.intVal)) {errorByteTooLarge(yylineno, $1.strVal)}; 
+          $$.type=$2.type; 
+          $$.llvm_name = string($$.name);
+
+          $$.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
+          $$.startLabel = cbf.genLabel();
+          $$.varInitLabel = $$.startLabel;}
+
+    | STRING { $$.type=$1.type;
+        $$.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
+        $$.startLabel = cbf.genLabel();
+        $$.varInitLabel = $$.startLabel;
+        string global_var = rgs.freshVar(".g_ig_", true);
+        $$.llvm_name = rgs.freshVar();
+        string str($1.name);
+        str = str.substr(1, str.length() - 2);
+        $$.name = str.data();
+        cbf.emitGlobal(global_var + " = constant [" + to_string(str.length() + 1) + " x i8] c\"" + str + "\\00\"");
+        int len = strlen($$.name) + 1;
+        cbf.emit($$.llvm_name + " = getelementptr ["+to_string(len)+" x i8], ["+to_string(len)+" x i8]* "+(global_var)+", i32 0, i32 0"); }
+    | TRUE { $$.type=$1.type;
+         $$.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
+        $$.startLabel = cbf.genLabel(); 
+        $$.varInitLabel = $$.startLabel;
+        $$.type = $1.type;
+        int true_line = cbf.emit("br label @");
+        int false_line = cbf.emit("br label @");
+        $$.trueList = cbf.makelist({true_line, FIRST});
+        $$.falseList = cbf.makelist({false_line, FIRST});
+        $$.llvm_name = EMPTY_VAR; }
+    | FALSE { $$.type=$1.type;
+          $$.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
+          $$.startLabel = cbf.genLabel();
+          $$.varInitLabel = $$.startLabel;
+          int false_line = cbf.emit("br label @");
+          int true_line = cbf.emit("br label @");
+          $$.trueList = cbf.makelist({true_line, FIRST});
+          $$.falseList = cbf.makelist({false_line, FIRST});
+          $$.var = EMPTY_VAR; }
+    | NOT Exp { if(notBool($2.type)) errorMismatch(yylineno); $$.type = $2.type;
+            $$.jumpList = $2.jumpList;
+            $$.startLabel = $2.startLabel;
+            $$.varInitLabel = $2.varInitLabel;
+            $$.trueList = $2.falseList;
+            $$.falseList = $2.trueList;            
+            $$.llvm_name = string(EMPTY_VAR); }
+    | Exp AND{
+        if(notBool($1.type) errorMismatch(yylineno);
+        bpVector($1.trueList);}
+    Exp { if(notBool($4.type)) errorMismatch(yylineno); 
+            $$.type=$1.type; 
+            resolveJumpToNextLine(string($4.startLabel)); //TODO ADD and understand
+            $$.jumpList = $1.jumpList;
+            $$.startLabel = $1.startLabel;
+            $$.varInitLabel = $3.varInitLabel; //might be a mistake?
+            $$.trueList = $4.trueList;
+            $$.falseList = cbf.merge($1.falseList, $4.falseList);
+            $$.llvm_name = EMPTY_VAR;}
+    | Exp 
+     OR {if(notBool($1.type) errorMismatch(yylineno); bpVector($1.falseList); } Exp {  notBool($4.type)) errorMismatch(yylineno); 
+            $$.type=$1.type; 
+            resolveJumpToNextLine(string($4.startLabel)); //todo add and understand
+            $$.jumpList = $1.jumpList;
+            $$.startLabel = $1.startLabel;
+            $$.varInitLabel = $3.varInitLabel; //TODO seems like a mistake.
+            $$.trueList = cbf.merge($1.trueList, $4.trueList);
+            $$.falseList = $4.falseList;
+            $$.var = EMPTY_VAR;}
+    | Exp EQ_RELOP Exp %prec EQ_RELOP { if(notIntOrByte($1.type,$3.type)) {errorMismatch(yylineno);} $$.type = "BOOL";
+        resolveJumpToNextLine(string($3.startLabel)); //todo add and understand.
+        $$.jumpList = $1.jumpList;
+        $$.startLabel = $1.startLabel;
+        $$.varInitLabel = $3.varInitLabel;
+        std::string branch_str = rgs.freshVar("branch");
+        cbf.emit(branch_str + " = icmp " + opToCommandName($2.name, $1.type) + " i32 " + $1.llvm_name + ", " + $3.llvm_name);
+        int branch_location = cbf.emit("br i1 " + branch_str + ", label @, label @");
+        $$.trueList = cbf.makelist({branch_location, FIRST});
+        $$.falseList = cbf.makelist({branch_location, SECOND});
+        $$.llvm_name = string(EMPTY_VAR); }
+    | Exp RE_RELOP Exp %prec RE_RELOP { if(notIntOrByte($1.type,$3.type)) {errorMismatch(yylineno);} $$.type = "BOOL";
+        resolveJumpToNextLine(string($3.startLabel)); //TODO add and understand
+        $$.jumpList = $1.jumpList;
+        $$.startLabel = $1.startLabel;
+        $$.varInitLabel = $3.varInitLabel;
+        std::string branch_str = rgs.freshVar("branch");
+        cbf.emit(branch_str + " = icmp " + opToCommandName($2.name, $1.type) + " i32 " + $1.llvm_name + ", " + $3.llvm_name);
+        int branch_location = cbf.emit("br i1 " + branch_str + ", label @, label @");
+        $$.trueList = cbf.makelist({branch_location, FIRST});
+        $$.falseList = cbf.makelist({branch_location, SECOND});
+        $$.llvm_name = EMPTY_VAR; }
+    | LPAREN Type RPAREN Exp {   
+        if(notIntOrByte($2.type,$4.type)) 
+        {
+            errorMismatch(yylineno);
+        }
+        $$.type = $2.type;
+        $$.llvm_name = rgs.freshVar();
+        $$.name = $4.name;
+        $$.jumpList = $4.jumpList;
+        $$.startLabel = $4.startLabel;
+        $$.varInitLabel = $4.varInitLabel;}
     ;
 
 %%
