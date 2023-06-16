@@ -36,15 +36,14 @@ string CodeBuffer::genLabel(){
 }
 
 int CodeBuffer::emit(const string &s){
-    //TODO: REPLACE ALL
-	/*
+
 	string indent(tab * 2, ' ');
     buffer.push_back(indent + s);
 	return buffer.size() - 1;
-	*/
+
 	
-	buffer.push_back(s);
-	return buffer.size() - 1;
+	//buffer.push_back(s);
+	//return buffer.size() - 1;
 }
 
 void CodeBuffer::bpatch(const vector<pair<int,BranchLabelIndex>>& address_list, const std::string &label){
