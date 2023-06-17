@@ -187,8 +187,8 @@ Statement
                              /*number value*/$4.llvm_name,
                              /*exp_type*/string($4.type),   
                              /*exp_true_list*/$4.trueList,
-                             /*exp_false_list*/$4.falseList);
-        
+                             /*exp_false_list*/$4.falseList,
+                             true);   
     }
     | ID ASSIGN {
         if(!_stack.nameExists($1.name) || _stack.isFunc($1.name)) errorUndef(yylineno, $1.name);
@@ -196,10 +196,14 @@ Statement
         } 
         Exp SC { 
             if(typesDontMatch(_stack.getType($1.name).data(), $4.type)) errorMismatch(yylineno);
-        //TODO: REFRENCE
-        /*
-        endAssignmentGenerate(...);
-        */
+            string llvm_name = _stack.getLlvmName(string($1.name));
+           resolve_jump_next_line(string($4.startLabel),$4.jumpList);
+            varDefintionAndAssignmentGenerate(/*llvm_var*/llvm_name,
+                                /*number value*/$4.llvm_name,
+                                /*exp_type*/string($4.type),   
+                                /*exp_true_list*/$4.trueList,
+                                /*exp_false_list*/$4.falseList,
+                                false);
         }
     | Call SC {
 
@@ -325,8 +329,6 @@ Call
         string str_name($1.name);
         string call_str = "call " + convertToLLVMType(string($$.type)) + " @" + str_name + "()";
         $$.label = call_str;
-        
-
     }
     ;
 NEW_SCOPE_MARKER 
@@ -365,8 +367,7 @@ ExpList
 
     ($$.trueListList).push_back($1.trueList); 
     ($$.falseListList).push_back($1.falseList);
-    if(($1.startLabel).length() == 0)
-            $1.startLabel = " ";
+    if(($1.startLabel).length() == 0) $1.startLabel = " ";
     $$.startLabel = $1.startLabel;
     $$.jumpList = $1.jumpList;
     }
@@ -453,8 +454,8 @@ Exp
         $$.type = $1.type;
         $$.name = $1.name;
         $$.llvm_name = to_string($$.intVal);
-        $$.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
-        $$.startLabel = cbf.genLabel();
+       $$.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
+     $$.startLabel = cbf.genLabel();
         }
     | NUM B {if(byteTooLarge($1.intVal)) {errorByteTooLarge(yylineno, $1.strVal);}
           $$.name = $1.name;
@@ -469,7 +470,7 @@ Exp
         $$.type=$1.type;
         string global_var = rgs.freshVar(".g_ig_", true);
         $$.llvm_name = rgs.freshVar();
-        $$.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
+       $$.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
         string str($1.strVal);
         str = str.substr(1, str.length() - 2);
         $$.startLabel = cbf.genLabel();
@@ -484,7 +485,7 @@ Exp
         $$.type = $1.type;
         int true_line = cbf.emit("br label @");
         int false_line = cbf.emit("br label @");
-        $$.trueList = cbf.makelist({true_line, FIRST});
+       $$.trueList = cbf.makelist({true_line, FIRST});
         $$.falseList = cbf.makelist({false_line, FIRST});
         $$.llvm_name = VAR_EMPTY_STR; }
     | FALSE { $$.type=$1.type;

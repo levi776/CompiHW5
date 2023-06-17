@@ -150,7 +150,7 @@ void varDefintionGenerate(string type, string var_name){
         cbf.emit("store i32 " + reg_from +", i32* " + var_name);
       }
 void varDefintionAndAssignmentGenerate(string llvm_var, string expr_value, string exp_type,
-vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIndex>>& exp_false_list){
+vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIndex>>& exp_false_list, bool flag){
         string llvm_var_name = llvm_var;
         string reg_from = expr_value;
         if(exp_type == "BOOL")
@@ -171,8 +171,10 @@ vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIn
             cbf.emit(reg_phi + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
             reg_from = reg_phi;
         }
-
-        cbf.emit(llvm_var_name + " = alloca i32");
+        if(flag) // flag has no meaning, we just wanna use this function in two different places
+        {
+            cbf.emit(llvm_var_name + " = alloca i32");
+        }
         cbf.emit("store i32 " + reg_from + ", i32* " + llvm_var_name);
 }
 
