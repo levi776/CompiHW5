@@ -590,11 +590,11 @@ static const yytype_int16 yyrline[] =
 {
        0,    83,    83,    83,    94,    95,   100,   110,    99,   118,
      119,   123,   124,   128,   129,   133,   134,   138,   142,   149,
-     148,   158,   158,   165,   177,   193,   193,   208,   217,   221,
-     235,   243,   242,   263,   273,   262,   296,   304,   311,   321,
-     335,   339,   348,   363,   374,   397,   398,   399,   402,   411,
-     430,   446,   452,   453,   460,   468,   482,   491,   499,   506,
-     505,   522,   521,   536,   546,   556
+     148,   159,   159,   166,   175,   191,   191,   206,   215,   219,
+     232,   240,   239,   261,   273,   260,   295,   303,   309,   328,
+     340,   344,   350,   361,   369,   384,   385,   386,   389,   395,
+     412,   424,   439,   445,   450,   456,   468,   472,   476,   481,
+     480,   494,   493,   505,   512,   519
 };
 #endif
 
@@ -1645,46 +1645,44 @@ yyreduce:
         yyval.nextList = yyvsp[0].nextList; 
         yyval.breakList = cbf.merge(yyvsp[-2].breakList, yyvsp[0].breakList);
         yyval.contList = cbf.merge(yyvsp[-2].contList, yyvsp[0].contList);
+        //cbf.emit("end of statement");
         }
-#line 1650 "parser.tab.cpp"
+#line 1651 "parser.tab.cpp"
     break;
 
   case 21: /* $@5: %empty  */
-#line 158 "parser.ypp"
+#line 159 "parser.ypp"
              {_stack.push_scope();}
-#line 1656 "parser.tab.cpp"
+#line 1657 "parser.tab.cpp"
     break;
 
   case 22: /* Statement: LBRACE $@5 Statements RBRACE  */
-#line 159 "parser.ypp"
+#line 160 "parser.ypp"
     {
         _stack.pop_scope();
         yyval.nextList = yyvsp[-1].nextList;
         yyval.breakList = yyvsp[-1].breakList;
         yyval.contList = yyvsp[-1].contList;
     }
-#line 1667 "parser.tab.cpp"
+#line 1668 "parser.tab.cpp"
     break;
 
   case 23: /* Statement: Type ID SC  */
-#line 165 "parser.ypp"
+#line 166 "parser.ypp"
                  { 
         string llvm_name = rgs.freshVar(string(yyvsp[-1].name),false);
         yyval.llvm_name = llvm_name;
         yyval.name = yyvsp[-1].name;
         _stack.insert(yyvsp[-1].name , yyvsp[-2].type, llvm_name, false, false, yylineno);
         yyvsp[-1].type=yyvsp[-2].type;
-        yyval.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
-        yyval.startLabel = cbf.genLabel();
         cbf.bpatch(yyval.jumpList, yyval.startLabel);
-        varDefintionGenerate(/*varType*/string(yyvsp[-2].type),
-        /*var_name*/llvm_name); 
+        varDefintionGenerate(/*varType*/string(yyvsp[-2].type),/*var_name*/llvm_name); 
         }
-#line 1684 "parser.tab.cpp"
+#line 1682 "parser.tab.cpp"
     break;
 
   case 24: /* Statement: Type ID ASSIGN Exp SC  */
-#line 178 "parser.ypp"
+#line 176 "parser.ypp"
     {
         if(typesDontMatch(yyvsp[-4].type, yyvsp[-1].type)) 
         {
@@ -1700,24 +1698,24 @@ yyreduce:
                              /*exp_false_list*/yyvsp[-1].falseList,
                              true);   
     }
-#line 1704 "parser.tab.cpp"
+#line 1702 "parser.tab.cpp"
     break;
 
   case 25: /* @6: %empty  */
-#line 193 "parser.ypp"
+#line 191 "parser.ypp"
                 {
         if(!_stack.nameExists(yyvsp[-1].name) || _stack.isFunc(yyvsp[-1].name)) errorUndef(yylineno, yyvsp[-1].name);
         yyval.name = yyvsp[-1].name;
         }
-#line 1713 "parser.tab.cpp"
+#line 1711 "parser.tab.cpp"
     break;
 
   case 26: /* Statement: ID ASSIGN @6 Exp SC  */
-#line 197 "parser.ypp"
+#line 195 "parser.ypp"
                { 
             if(typesDontMatch(_stack.getType(yyvsp[-4].name).data(), yyvsp[-1].type)) errorMismatch(yylineno);
             string llvm_name = _stack.getLlvmName(string(yyvsp[-4].name));
-           resolve_jump_next_line(string(yyvsp[-1].startLabel),yyvsp[-1].jumpList);
+           //resolve_jump_next_line(string($4.startLabel),$4.jumpList);
             varDefintionAndAssignmentGenerate(/*llvm_var*/llvm_name,
                                 /*number value*/yyvsp[-1].llvm_name,
                                 /*exp_type*/string(yyvsp[-1].type),   
@@ -1725,37 +1723,36 @@ yyreduce:
                                 /*exp_false_list*/yyvsp[-1].falseList,
                                 false);
         }
-#line 1729 "parser.tab.cpp"
+#line 1727 "parser.tab.cpp"
     break;
 
   case 27: /* Statement: Call SC  */
-#line 208 "parser.ypp"
+#line 206 "parser.ypp"
               {
 
       yyval.type = yyvsp[-1].type;
       yyval.llvm_name = rgs.freshVar();
       //TODO: refference
       
-      resolve_jump_next_line(string(yyvsp[-1].startLabel),yyvsp[-1].jumpList);
-      cbf.emit(yyvsp[-1].label);
+      //resolve_jump_next_line(string($1.startLabel),$1.jumpList);
+       cbf.emit(yyvsp[-1].label);
        }
-#line 1743 "parser.tab.cpp"
+#line 1741 "parser.tab.cpp"
     break;
 
   case 28: /* Statement: RETURN SC  */
-#line 217 "parser.ypp"
+#line 215 "parser.ypp"
                 { 
         if(!isVoid()||_stack.getCurrentfunctionreturnType()!="VOID") errorMismatch(yylineno); 
         cbf.emit("ret void");
         }
-#line 1752 "parser.tab.cpp"
+#line 1750 "parser.tab.cpp"
     break;
 
   case 29: /* Statement: RETURN Exp SC  */
-#line 221 "parser.ypp"
+#line 219 "parser.ypp"
                     {
         if(isVoid()||!_stack.is_desired_return_type(string(yyvsp[-1].type),_stack.getCurrentfunctionreturnType(),false)) errorMismatch(yylineno);
-        resolve_jump_next_line(string(yyvsp[-1].startLabel),yyvsp[-1].jumpList);
         if(strcmp(yyvsp[-1].type, "BOOL") == 0)
         {
             yyvsp[-1].llvm_name = rgs.freshVar();
@@ -1767,55 +1764,58 @@ yyreduce:
 
 
         }
-#line 1771 "parser.tab.cpp"
+#line 1768 "parser.tab.cpp"
     break;
 
   case 30: /* Statement: IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER  */
-#line 236 "parser.ypp"
+#line 233 "parser.ypp"
 {    
         yyval.nextList = cbf.merge(yyvsp[-3].falseList, yyvsp[-1].nextList);
         yyval.nextList = cbf.merge(yyval.nextList, yyvsp[0].nextList);
         yyval.breakList = yyvsp[-1].breakList;
         yyval.contList = yyvsp[-1].contList;
 }
-#line 1782 "parser.tab.cpp"
+#line 1779 "parser.tab.cpp"
     break;
 
   case 31: /* @7: %empty  */
-#line 243 "parser.ypp"
+#line 240 "parser.ypp"
      {
         _stack.push_scope();
         yyval.nextList = yyvsp[-1].nextList;
         bpVector(yyvsp[-4].falseList);
 
     }
-#line 1793 "parser.tab.cpp"
+#line 1790 "parser.tab.cpp"
     break;
 
   case 32: /* Statement: IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER ELSE @7 Statement  */
-#line 249 "parser.ypp"
+#line 246 "parser.ypp"
     {
         //TODO: return to understand
         _stack.pop_scope();
-        int line = cbf.emit("br label @");
-        auto temp = cbf.merge(cbf.makelist({line, FIRST}), yyvsp[-4].nextList);
-        temp = cbf.merge(temp, yyvsp[-1].nextList);
+        //int line = cbf.emit("br label @");
+        //cbf.emit("Statement: line");
+        //auto temp = cbf.merge(cbf.makelist({line, FIRST}), );
+        auto temp = cbf.merge(yyvsp[-4].nextList, yyvsp[-1].nextList);
         yyval.nextList = cbf.merge(temp, yyvsp[0].nextList);
         yyval.breakList = cbf.merge(yyvsp[-4].breakList, yyvsp[0].breakList);
         yyval.contList = cbf.merge(yyvsp[-4].contList, yyvsp[0].contList);
         
     }
-#line 1809 "parser.tab.cpp"
+#line 1807 "parser.tab.cpp"
     break;
 
   case 33: /* @8: %empty  */
-#line 263 "parser.ypp"
+#line 261 "parser.ypp"
     {
         _stack.push_scope();_stack.updateInWhile(true);
         //TODO: understand
         //NIKITA'S COMMENT: There must be a jump to a label BEFORE it definition....:
         int line = cbf.emit("br label @");
+        cbf.emit("WHILE: line");
         yyval.label = cbf.genLabel();
+
         const auto& list = cbf.makelist({line, FIRST});
         bpVector(list, string(yyval.label));
     }
@@ -1827,19 +1827,17 @@ yyreduce:
     { 
         if(notBool(yyvsp[0].type)) errorMismatch(yylineno);
         //TODO: understand
-        
-        resolve_jump_next_line(string(yyvsp[0].startLabel),yyvsp[0].jumpList);
-        
-
         yyval.label = cbf.genLabel();
+        cbf.emit("while something exp: genLabel");
+
         bpVector(yyvsp[0].trueList, string(yyval.label));
         
     }
-#line 1839 "parser.tab.cpp"
+#line 1837 "parser.tab.cpp"
     break;
 
   case 35: /* Statement: WHILE @8 LPAREN Exp @9 RPAREN Statement  */
-#line 285 "parser.ypp"
+#line 283 "parser.ypp"
     {
         //todo understand
         _stack.updateInWhile(false);
@@ -1848,14 +1846,15 @@ yyreduce:
         bpVector(yyvsp[0].nextList,string(yyvsp[-5].label));
         yyval.nextList = cbf.merge(yyvsp[-3].falseList, yyvsp[0].breakList);
         cbf.emit("br label %" + yyvsp[-5].label);
+        cbf.emit("While LPAREN Exp RPAREN Statement");
 
 
     }
-#line 1855 "parser.tab.cpp"
+#line 1854 "parser.tab.cpp"
     break;
 
   case 36: /* Statement: BREAK SC  */
-#line 297 "parser.ypp"
+#line 296 "parser.ypp"
     { 
         if(!_stack.inWhileLoop()) errorUnexpectedBreak(yylineno);
                 
@@ -1863,108 +1862,101 @@ yyreduce:
         yyval.breakList = cbf.makelist({cbf.emit("br label @"), FIRST});
         
     }
-#line 1867 "parser.tab.cpp"
+#line 1866 "parser.tab.cpp"
     break;
 
   case 37: /* Statement: CONTINUE SC  */
-#line 304 "parser.ypp"
+#line 303 "parser.ypp"
                   { 
         if(!_stack.inWhileLoop()) errorUnexpectedContinue(yylineno);
         yyval.contList = cbf.makelist({cbf.emit("br label @"), FIRST});
         }
-#line 1876 "parser.tab.cpp"
+#line 1875 "parser.tab.cpp"
     break;
 
   case 38: /* Call: ID LPAREN ExpList RPAREN  */
-#line 311 "parser.ypp"
+#line 309 "parser.ypp"
                                { 
         //todo understand
         _stack.validateCall(string(yyvsp[-3].name), string(yyvsp[-1].type), yylineno);
+        
+        
         yyval.name = yyvsp[-3].name; 
         yyval.type = _stack.getFuncReturnType(string(yyvsp[-3].name),string(yyvsp[-1].type)).data();
-        //TODO: REFRENCE
-        /*
-        functionCallGenerate(...);
-        */
+        yyval.llvm_name = _stack.getFunctionLlvmName(string(yyvsp[-3].name), string(yyvsp[-1].type));
+        yyval.label = funcCall(/*function return type*/string(yyval.type),
+                      /*function parameter types*/string(yyvsp[-1].type),
+                      /*function parameter llvm_names*/string(yyvsp[-1].llvm_name),
+                      /*truelist_list*/yyvsp[-1].trueListList,
+                      /*falselist_list*/yyvsp[-1].falseListList,
+                      string(yyval.llvm_name));
+
+
+
+
     }
-#line 1891 "parser.tab.cpp"
+#line 1899 "parser.tab.cpp"
     break;
 
   case 39: /* Call: ID LPAREN RPAREN  */
-#line 322 "parser.ypp"
+#line 329 "parser.ypp"
     { 
         //todo understand
         _stack.validateCall(string(yyvsp[-2].name), "",yylineno);
         yyval.name = yyvsp[-2].name; 
-        yyval.type = _stack.getFuncReturnType(yyvsp[-2].name,"").data();
-        yyval.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
-        yyval.startLabel = cbf.genLabel();        
+        yyval.type = _stack.getFuncReturnType(yyvsp[-2].name,"").data();       
         string str_name(yyvsp[-2].name);
         string call_str = "call " + convertToLLVMType(string(yyval.type)) + " @" + str_name + "()";
         yyval.label = call_str;
     }
-#line 1907 "parser.tab.cpp"
-    break;
-
-  case 40: /* NEW_SCOPE_MARKER: %empty  */
-#line 335 "parser.ypp"
-                 {_stack.push_scope();}
 #line 1913 "parser.tab.cpp"
     break;
 
+  case 40: /* NEW_SCOPE_MARKER: %empty  */
+#line 340 "parser.ypp"
+                 {_stack.push_scope();}
+#line 1919 "parser.tab.cpp"
+    break;
+
   case 41: /* POP_SCOPE_MARKER: %empty  */
-#line 339 "parser.ypp"
+#line 344 "parser.ypp"
     {
         //todo understand
-        _stack.pop_scope();
-        int line = cbf.emit("br label @");
-        yyval.nextList = cbf.makelist({line, FIRST});
-       
+        _stack.pop_scope();       
     }
-#line 1925 "parser.tab.cpp"
+#line 1928 "parser.tab.cpp"
     break;
 
   case 42: /* CHECK_TYPE_MARKER: Exp  */
-#line 348 "parser.ypp"
+#line 350 "parser.ypp"
           {
         if(notBool(yyvsp[0].type)) errorMismatch(yylineno);
         //TODO: UNDERSTAND
-        resolve_jump_next_line(string(yyvsp[0].startLabel),yyvsp[0].jumpList);
-        int line = cbf.emit("br label @");
-        string label = cbf.genLabel();
-        pair<int,BranchLabelIndex> item = {line, FIRST};
-        auto list = cbf.makelist(item);
-        bpVector(list, label);
-        bpVector(yyvsp[0].trueList, label); // we want same label as before, hence do not delete label.
+       // string label = cbf.genLabel();
+       // cbf.emit("CHECK_TYPE_MARKER: genLabel");
+       // bpVector($1.trueList, label); // we want same label as before, hence do not delete label.
         yyval.falseList = yyvsp[0].falseList;
         yyval.trueList = yyvsp[0].trueList;
         }
-#line 1943 "parser.tab.cpp"
+#line 1942 "parser.tab.cpp"
     break;
 
   case 43: /* ExpList: Exp  */
-#line 364 "parser.ypp"
+#line 362 "parser.ypp"
     { 
     yyval.type = yyvsp[0].type; 
     //TODO: understand
 
     (yyval.trueListList).push_back(yyvsp[0].trueList); 
     (yyval.falseListList).push_back(yyvsp[0].falseList);
-    if((yyvsp[0].startLabel).length() == 0) yyvsp[0].startLabel = " ";
-    yyval.startLabel = yyvsp[0].startLabel;
-    yyval.jumpList = yyvsp[0].jumpList;
     }
-#line 1958 "parser.tab.cpp"
+#line 1954 "parser.tab.cpp"
     break;
 
   case 44: /* ExpList: Exp COMMA ExpList  */
-#line 375 "parser.ypp"
+#line 370 "parser.ypp"
     {
         //TODO: ADD and Understand
-        
-        resolve_jump_next_line(string(yyvsp[0].startLabel),yyvsp[0].jumpList);
-        
-
         yyval.type = join(join(yyvsp[-2].type, ","),yyvsp[0].type);
         
 
@@ -1973,54 +1965,45 @@ yyreduce:
         yyval.trueListList = yyvsp[0].trueListList;
         (yyvsp[0].falseListList).insert((yyvsp[0].falseListList).begin(), yyvsp[-2].falseList);
         yyval.falseListList = yyvsp[0].falseListList;
-        if((yyvsp[-2].startLabel).length() == 0)
-        yyvsp[-2].startLabel = " ";
-        yyval.startLabel = yyvsp[-2].startLabel + "," + yyvsp[0].startLabel;
-        yyval.jumpList = yyvsp[-2].jumpList; 
     }
-#line 1982 "parser.tab.cpp"
+#line 1970 "parser.tab.cpp"
     break;
 
   case 45: /* Type: INT  */
-#line 397 "parser.ypp"
+#line 384 "parser.ypp"
           { yyval.type = yyvsp[0].type; }
-#line 1988 "parser.tab.cpp"
+#line 1976 "parser.tab.cpp"
     break;
 
   case 46: /* Type: BYTE  */
-#line 398 "parser.ypp"
+#line 385 "parser.ypp"
            { yyval.type = yyvsp[0].type; }
-#line 1994 "parser.tab.cpp"
+#line 1982 "parser.tab.cpp"
     break;
 
   case 47: /* Type: BOOL  */
-#line 399 "parser.ypp"
+#line 386 "parser.ypp"
            { yyval.type = yyvsp[0].type; }
-#line 2000 "parser.tab.cpp"
+#line 1988 "parser.tab.cpp"
     break;
 
   case 48: /* Exp: LPAREN Exp RPAREN  */
-#line 402 "parser.ypp"
+#line 389 "parser.ypp"
                         {
-        //todo understand
-        yyval.type = yyvsp[-1].type;
+        yyval.falseList = yyvsp[-1].falseList;
         yyval.llvm_name = yyvsp[-1].llvm_name;
         yyval.trueList = yyvsp[-1].trueList;
-        yyval.falseList = yyvsp[-1].falseList;
-        yyval.jumpList = yyvsp[-1].jumpList;
-        yyval.startLabel = yyvsp[-1].startLabel;
+        yyval.type = yyvsp[-1].type;
         }
-#line 2014 "parser.tab.cpp"
+#line 1999 "parser.tab.cpp"
     break;
 
   case 49: /* Exp: Exp MD_BINOP Exp  */
-#line 411 "parser.ypp"
+#line 395 "parser.ypp"
                                       {
          if(notIntOrByte(yyvsp[-2].type,yyvsp[0].type)) errorMismatch(yylineno); yyval.type = biggerType(yyvsp[-2].type, yyvsp[0].type);
          //TODO : understand
             yyval.llvm_name = rgs.freshVar();
-            yyval.jumpList = yyvsp[-2].jumpList;
-            yyval.startLabel = yyvsp[-2].startLabel;
             validateBinop(string(yyvsp[-1].name), yyvsp[0].llvm_name);
             
             yyval.llvm_name = rgs.freshVar();
@@ -2034,19 +2017,15 @@ yyreduce:
             }
             
           }
-#line 2038 "parser.tab.cpp"
+#line 2021 "parser.tab.cpp"
     break;
 
   case 50: /* Exp: Exp PM_BINOP Exp  */
-#line 430 "parser.ypp"
+#line 412 "parser.ypp"
                                       {
          if(notIntOrByte(yyvsp[-2].type,yyvsp[0].type)) errorMismatch(yylineno); yyval.type = biggerType(yyvsp[-2].type, yyvsp[0].type);
-            resolve_jump_next_line(string(yyvsp[0].startLabel),yyvsp[0].jumpList);
             yyval.llvm_name = rgs.freshVar();
             yyval.type = biggerType(yyvsp[-2].type, yyvsp[0].type);
-            yyval.startLabel = yyvsp[-2].startLabel;
-            yyval.jumpList = yyvsp[-2].jumpList;
-
             cbf.emit(yyval.llvm_name + " = " + opcode_to_cmd(string(yyvsp[-1].name), string(yyval.type)) + " i32 " + yyvsp[-2].llvm_name + ", " + yyvsp[0].llvm_name);
             if(strcmp(yyval.type, "BYTE") == 0)
             {
@@ -2055,186 +2034,171 @@ yyreduce:
                 yyval.llvm_name = new_reg;
             }
         }
-#line 2059 "parser.tab.cpp"
+#line 2038 "parser.tab.cpp"
     break;
 
   case 51: /* Exp: ID  */
-#line 446 "parser.ypp"
+#line 424 "parser.ypp"
          {
         _stack.validateId(string(yyvsp[0].name),yylineno); 
         yyval.type = _stack.getType(string(yyvsp[0].name)).data();
         yyval.llvm_name = _stack.getLlvmName(string(yyvsp[0].name));
-        //$$.intVal = _stack.getIntVal(string($1.name))
+           //TODO: check if correct
+           /* if(strcmp($$.type, "BOOL") == 0)
+            {
+                string compare_reg = rgs.freshVar();
+                cbf.emit(compare_reg + " = icmp eq i32 1, " + $$.llvm_name);
+                int line = cbf.emit("br i1 " + compare_reg + ", label @, label @");
+
+                $$.trueList = cbf.makelist({line, FIRST});
+                $$.falseList = cbf.makelist({line, SECOND});
+            }*/
         }
-#line 2070 "parser.tab.cpp"
+#line 2058 "parser.tab.cpp"
     break;
 
   case 52: /* Exp: Call  */
-#line 452 "parser.ypp"
-           { yyval.type=yyvsp[0].type; }
-#line 2076 "parser.tab.cpp"
+#line 439 "parser.ypp"
+           {
+         yyval.type=yyvsp[0].type; 
+        yyval.name = yyvsp[0].name; 
+        yyval.type = yyvsp[0].type;
+        yyval.llvm_name = yyvsp[0].llvm_name;
+    }
+#line 2069 "parser.tab.cpp"
     break;
 
   case 53: /* Exp: NUM  */
-#line 453 "parser.ypp"
+#line 445 "parser.ypp"
           { yyval.type=yyvsp[0].type; 
         yyval.type = yyvsp[0].type;
         yyval.name = yyvsp[0].name;
         yyval.llvm_name = to_string(yyval.intVal);
-       yyval.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
-     yyval.startLabel = cbf.genLabel();
         }
-#line 2088 "parser.tab.cpp"
+#line 2079 "parser.tab.cpp"
     break;
 
   case 54: /* Exp: NUM B  */
-#line 460 "parser.ypp"
+#line 450 "parser.ypp"
             {if(byteTooLarge(yyvsp[-1].intVal)) {errorByteTooLarge(yylineno, yyvsp[-1].strVal);}
           yyval.name = yyvsp[-1].name;
           yyval.type= yyvsp[0].type; 
           yyval.llvm_name = to_string(yyval.intVal);
-          yyval.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
-          yyval.startLabel = cbf.genLabel();
           }
-#line 2100 "parser.tab.cpp"
+#line 2089 "parser.tab.cpp"
     break;
 
   case 55: /* Exp: STRING  */
-#line 469 "parser.ypp"
+#line 457 "parser.ypp"
     { 
         yyval.type=yyvsp[0].type;
         string global_var = rgs.freshVar(".g_ig_", true);
         yyval.llvm_name = rgs.freshVar();
-       yyval.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
         string str(yyvsp[0].strVal);
         str = str.substr(1, str.length() - 2);
-        yyval.startLabel = cbf.genLabel();
         yyval.name = str.data();
         int len = strlen(yyval.name) + 1;
         cbf.emitGlobal(global_var + " = constant [" + to_string(str.length() + 1) + " x i8] c\"" + str + "\\00\"");
         cbf.emit(yyval.llvm_name + " = getelementptr ["+to_string(len)+" x i8], ["+to_string(len)+" x i8]* "+(global_var)+", i32 0, i32 0"); 
     }
-#line 2118 "parser.tab.cpp"
+#line 2105 "parser.tab.cpp"
     break;
 
   case 56: /* Exp: TRUE  */
-#line 482 "parser.ypp"
+#line 468 "parser.ypp"
            { yyval.type=yyvsp[0].type;
-        yyval.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
-        yyval.startLabel = cbf.genLabel(); 
         yyval.type = yyvsp[0].type;
-        int true_line = cbf.emit("br label @");
-        int false_line = cbf.emit("br label @");
-       yyval.trueList = cbf.makelist({true_line, FIRST});
-        yyval.falseList = cbf.makelist({false_line, FIRST});
-        yyval.llvm_name = VAR_EMPTY_STR; }
-#line 2132 "parser.tab.cpp"
+        yyval.llvm_name = VAR_EMPTY_STR; 
+        }
+#line 2114 "parser.tab.cpp"
     break;
 
   case 57: /* Exp: FALSE  */
-#line 491 "parser.ypp"
-            { yyval.type=yyvsp[0].type;
-          yyval.jumpList = cbf.makelist({cbf.emit("br label @"), FIRST});
-          yyval.startLabel = cbf.genLabel();
-          int false_line = cbf.emit("br label @");
-          int true_line = cbf.emit("br label @");
-          yyval.trueList = cbf.makelist({true_line, FIRST});
-          yyval.falseList = cbf.makelist({false_line, FIRST});
-          yyval.llvm_name = string(VAR_EMPTY_STR); }
-#line 2145 "parser.tab.cpp"
+#line 472 "parser.ypp"
+            {
+        yyval.type=yyvsp[0].type;
+        yyval.llvm_name = string(VAR_EMPTY_STR); 
+          }
+#line 2123 "parser.tab.cpp"
     break;
 
   case 58: /* Exp: NOT Exp  */
-#line 499 "parser.ypp"
+#line 476 "parser.ypp"
               { if(notBool(yyvsp[0].type)) errorMismatch(yylineno); yyval.type = yyvsp[0].type;
-            yyval.jumpList = yyvsp[0].jumpList;
-            yyval.startLabel = yyvsp[0].startLabel;
             yyval.trueList = yyvsp[0].falseList;
             yyval.falseList = yyvsp[0].trueList;            
             yyval.llvm_name = string(VAR_EMPTY_STR); }
-#line 2156 "parser.tab.cpp"
+#line 2132 "parser.tab.cpp"
     break;
 
   case 59: /* $@10: %empty  */
-#line 506 "parser.ypp"
+#line 481 "parser.ypp"
     {
         if(notBool(yyvsp[-1].type)) errorMismatch(yylineno);
         bpVector(yyvsp[-1].trueList);
     }
-#line 2165 "parser.tab.cpp"
+#line 2141 "parser.tab.cpp"
     break;
 
   case 60: /* Exp: Exp AND $@10 Exp  */
-#line 511 "parser.ypp"
+#line 486 "parser.ypp"
     { 
         if(notBool(yyvsp[0].type)) errorMismatch(yylineno); 
         yyval.type=yyvsp[-3].type; 
         yyval.llvm_name = VAR_EMPTY_STR;
-        yyval.jumpList = yyvsp[-3].jumpList;
         yyval.trueList = yyvsp[0].trueList;
-        yyval.startLabel = yyvsp[-3].startLabel;
-        resolve_jump_next_line(string(yyvsp[0].startLabel),yyvsp[0].jumpList);
         yyval.falseList = cbf.merge(yyvsp[-3].falseList, yyvsp[0].falseList);
         }
-#line 2180 "parser.tab.cpp"
+#line 2153 "parser.tab.cpp"
     break;
 
   case 61: /* $@11: %empty  */
-#line 522 "parser.ypp"
+#line 494 "parser.ypp"
     {
         if(notBool(yyvsp[-1].type)) errorMismatch(yylineno); bpVector(yyvsp[-1].falseList);
     }
-#line 2188 "parser.tab.cpp"
+#line 2161 "parser.tab.cpp"
     break;
 
   case 62: /* Exp: Exp OR $@11 Exp  */
-#line 525 "parser.ypp"
+#line 497 "parser.ypp"
     {  
         if(notBool(yyvsp[0].type)) errorMismatch(yylineno); 
         yyval.type=yyvsp[-3].type; 
-        yyval.jumpList = yyvsp[-3].jumpList;
-        yyval.startLabel = yyvsp[-3].startLabel;
         yyval.falseList = yyvsp[0].falseList;
         yyval.llvm_name = VAR_EMPTY_STR;
         yyval.trueList = cbf.merge(yyvsp[-3].trueList, yyvsp[0].trueList);
-        resolve_jump_next_line(string(yyvsp[0].startLabel),yyvsp[0].jumpList); //todo add and understand
 
     }
-#line 2204 "parser.tab.cpp"
+#line 2174 "parser.tab.cpp"
     break;
 
   case 63: /* Exp: Exp EQ_RELOP Exp  */
-#line 536 "parser.ypp"
+#line 505 "parser.ypp"
                                       { if(notIntOrByte(yyvsp[-2].type,yyvsp[0].type)) {errorMismatch(yylineno);} yyval.type = "BOOL";
-        resolve_jump_next_line(string(yyvsp[0].startLabel),yyvsp[0].jumpList); //todo add and understand.
-        yyval.jumpList = yyvsp[-2].jumpList;
-        yyval.startLabel = yyvsp[-2].startLabel;
         std::string branch_str = rgs.freshVar("branch");
         cbf.emit(branch_str + " = icmp " + opcode_to_cmd(yyvsp[-1].name, yyvsp[-2].type) + " i32 " + yyvsp[-2].llvm_name + ", " + yyvsp[0].llvm_name);
         int branch_location = cbf.emit("br i1 " + branch_str + ", label @, label @");
         yyval.trueList = cbf.makelist({branch_location, FIRST});
         yyval.falseList = cbf.makelist({branch_location, SECOND});
         yyval.llvm_name = string(VAR_EMPTY_STR); }
-#line 2219 "parser.tab.cpp"
+#line 2186 "parser.tab.cpp"
     break;
 
   case 64: /* Exp: Exp RE_RELOP Exp  */
-#line 546 "parser.ypp"
+#line 512 "parser.ypp"
                                       { if(notIntOrByte(yyvsp[-2].type,yyvsp[0].type)) {errorMismatch(yylineno);} yyval.type = "BOOL";
-        resolve_jump_next_line(string(yyvsp[0].startLabel),yyvsp[0].jumpList); //TODO add and understand
-        yyval.jumpList = yyvsp[-2].jumpList;
-        yyval.startLabel = yyvsp[-2].startLabel;
         std::string branch_str = rgs.freshVar("branch");
         cbf.emit(branch_str + " = icmp " + opcode_to_cmd(yyvsp[-1].name, yyvsp[-2].type) + " i32 " + yyvsp[-2].llvm_name + ", " + yyvsp[0].llvm_name);
         int branch_location = cbf.emit("br i1 " + branch_str + ", label @, label @");
         yyval.trueList = cbf.makelist({branch_location, FIRST});
         yyval.falseList = cbf.makelist({branch_location, SECOND});
         yyval.llvm_name = VAR_EMPTY_STR; }
-#line 2234 "parser.tab.cpp"
+#line 2198 "parser.tab.cpp"
     break;
 
   case 65: /* Exp: LPAREN Type RPAREN Exp  */
-#line 556 "parser.ypp"
+#line 519 "parser.ypp"
                              {   
         if(notIntOrByte(yyvsp[-2].type,yyvsp[0].type)) 
         {
@@ -2243,14 +2207,12 @@ yyreduce:
         yyval.type = yyvsp[-2].type;
         yyval.llvm_name = rgs.freshVar();
         yyval.name = yyvsp[0].name;
-        yyval.jumpList = yyvsp[0].jumpList;
-        yyval.startLabel = yyvsp[0].startLabel;
         }
-#line 2250 "parser.tab.cpp"
+#line 2212 "parser.tab.cpp"
     break;
 
 
-#line 2254 "parser.tab.cpp"
+#line 2216 "parser.tab.cpp"
 
       default: break;
     }
@@ -2474,7 +2436,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 569 "parser.ypp"
+#line 530 "parser.ypp"
 
 char* join(char* s1, char* s2)
 {

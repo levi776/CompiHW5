@@ -269,13 +269,23 @@ class symbol_tables_stack{
             table_entry *func = this->findFunc(func_name, parameters, false, false);
             if(func == nullptr)
             {
-            assert(false);
+                assert(false);
             }
             return func->get_return_type();
         }
         string getLlvmName(string name)
         {
             return this->tables.top()->findByName(name)->get_name_at_llvm();
+        }
+        string getFunctionLlvmName(string func_name, string parameters)
+        {
+            table_entry *func = this->findFunc(func_name, parameters, false, false);
+            if(func == nullptr)
+            {
+                assert(false);
+            }
+            return func->get_name_at_llvm();
+
         }
 
         table_entry* findFunc(const string& name,const string& parameters="",bool exactly_the_same=false,bool search_name_only=true, const string& returnType="",bool include_retType_in_search=false)

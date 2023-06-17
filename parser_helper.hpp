@@ -80,11 +80,6 @@ vector<string> parseString(string str){
 void closeFunction(vector<pair<int,BranchLabelIndex>>& nextlist, string return_type)
 {
     bpVector(nextlist,"");
-    /*if(!nextlist.empty())
-    { 
-        string label = cbf.genLabel();
-        cbf.bpatch(nextlist, label); 
-    }*/
     if(return_type == "VOID") 
     {
         cbf.emit("ret void\n}");
@@ -114,6 +109,7 @@ void bpVector(vector<pair<int,BranchLabelIndex>> nextlist,string f_label = ""){
         if(f_label == "")
         {
          label = cbf.genLabel();
+         cbf.emit("bp vector bo boo");
         }
         else {
             label = f_label;
@@ -127,10 +123,13 @@ void varDefintionGenerate(string type, string var_name){
     if (type == "BOOL")
         {
           int false_line = cbf.emit("br label @");
+          cbf.emit("varDefintionGenerate: false line popop");
           int true_line = cbf.emit("br label @");
+          cbf.emit("varDefintionGenerate: true line  yoyo popop");
 
           string true_label = cbf.genLabel();
           int true_line_to_next = cbf.emit("br label @");
+          
           string false_label = cbf.genLabel();
           int false_line_to_next = cbf.emit("br label @");
           
@@ -157,8 +156,12 @@ vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIn
         {
             string true_label = cbf.genLabel();
             int true_line = cbf.emit("br label @");
+            cbf.emit("varDefintionAndAssignmentGenerate: false line popop");
+
             string false_label = cbf.genLabel();
             int false_line = cbf.emit("br label @");
+            cbf.emit("varDefintionAndAssignmentGenerate: false line popop");
+
             string next_label = cbf.genLabel();
             auto true_list = cbf.makelist({true_line, FIRST});
             auto false_list = cbf.makelist({false_line, FIRST});
@@ -238,7 +241,8 @@ void validateBinop(string operation, string second_operand)
             cbf.emit("call void @print (i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.error, i32 0, i32 0))");
             cbf.emit("call void @exit(i32 0)");
             int jump_next_line = cbf.emit("br label @");
-            
+            cbf.emit("validateBinop:");
+
             string not_zero_label = cbf.genLabel();
 
             cbf.bpatch(cbf.makelist({jump_line, FIRST}), zero_label);
@@ -251,9 +255,12 @@ void emitBool(string llvm_name,vector<pair<int,BranchLabelIndex>> true_list,vect
 {
     string true_label = cbf.genLabel();
     int true_line = cbf.emit("br label @");
+    cbf.emit("emitBOOLEN CABOOLEN: jump nex-line-yo line popop");
+
     string false_label = cbf.genLabel();
     
     int false_line = cbf.emit("br label @");
+
     string return_label = cbf.genLabel();
 
     cbf.emit(llvm_name + " = phi i32 [1, %" + true_label +"], [0, %" + false_label +"]");
@@ -263,5 +270,49 @@ void emitBool(string llvm_name,vector<pair<int,BranchLabelIndex>> true_list,vect
 
     cbf.bpatch(cbf.makelist({true_line, FIRST}), return_label);
     cbf.bpatch(cbf.makelist({false_line, FIRST}), return_label);
+}
+
+bool notLastBool(vector<string>::iterator it, vector<string>::iterator end){
+  while (it != end){
+    if(*it == "BOOL")
+      return true;
+    it++;
+  }
+  return false;
+}
+
+string funcCall(string func_ret_type,
+              string func_param_types,
+                string func_param_llvm_names,
+                vector<vector<pair<int,BranchLabelIndex>>> truelist_vec,
+                vector<vector<pair<int,BranchLabelIndex>>> falselist_vec,
+                string func_name)
+{
+    string call_str = "call " + convertToLLVMType(string(func_ret_type)) + " " + func_name + " (";
+    vector<string> types_vec = parseString(func_param_types);
+    vector<string> llvm_name_vec = parseString(func_param_llvm_names);
+
+        auto it = llvm_name_vec.begin(), types_it = types_vec.begin();
+        auto true_it = truelist_vec.begin(), false_it = falselist_vec.begin();
+        for (; it < llvm_name_vec.end(); it++, types_it++, true_it++, false_it++)
+        {
+          if((*types_it) == "STRING")
+          {
+            call_str += "i8* " + *it;
+          }
+          else if((*types_it) == "BOOL")
+          {
+            string var = rgs.freshVar();
+            call_str += "i32 " + var;
+          }
+          else
+          {
+             call_str += "i32 " + *it;
+          }
+          if(it + 1 != llvm_name_vec.end())
+              call_str += ", ";
+        }
+        call_str += ")";
+        return call_str;
 }
 #endif
