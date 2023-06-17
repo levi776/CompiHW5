@@ -273,7 +273,10 @@ class symbol_tables_stack{
             }
             return func->get_return_type();
         }
-        
+        string getLlvmName(string name)
+        {
+            return this->tables.top()->findByName(name)->get_name_at_llvm();
+        }
 
         table_entry* findFunc(const string& name,const string& parameters="",bool exactly_the_same=false,bool search_name_only=true, const string& returnType="",bool include_retType_in_search=false)
         {

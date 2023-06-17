@@ -18,7 +18,6 @@ typedef struct token_att {
     vector<pair<int,BranchLabelIndex>> breakList;
     vector<pair<int,BranchLabelIndex>> contList;
     string startLabel;
-    string varInitLabel;
     vector<pair<int,BranchLabelIndex>> jumpList;
      vector<vector<pair<int,BranchLabelIndex>>> trueListList;
     vector<vector<pair<int,BranchLabelIndex>>> falseListList;

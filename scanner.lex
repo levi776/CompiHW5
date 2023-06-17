@@ -58,7 +58,7 @@ continue                                                                        
 {md_binop}                                                                          {add_name_att(yytext); return MD_BINOP;}
 {pm_binop}                                                                          {add_name_att(yytext); return PM_BINOP;}
 {id}                                                                                {add_name_att(yytext);return ID;}                                                                      
-{num}                                                                               {add_type_att("INT");add_intVal_att(atoi(yytext));add_strVal_att(yytext); return NUM;}    
+{num}                                                                               {add_name_att(yytext);add_type_att("INT");add_intVal_att(atoi(yytext));add_strVal_att(yytext); return NUM;}    
 {string}                                                                            {add_type_att("STRING");add_strVal_att(yytext); return STRING;}
 {whitespace}*                                                                       ;
 {comment}                                                                           ;

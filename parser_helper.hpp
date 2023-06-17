@@ -85,24 +85,23 @@ void closeFunction(vector<pair<int,BranchLabelIndex>>& nextlist, string return_t
         string label = cbf.genLabel();
         cbf.bpatch(nextlist, label); 
     }*/
-    cbf.emit("ret ");
     if(return_type == "VOID") 
     {
-        cbf.emit("void}");
+        cbf.emit("ret void\n}");
         return;
     }
     if (return_type == "INT")
     {
-         cbf.emit("ret i32 0}");
+         cbf.emit("ret i32 0\n}");
          return;
     }
     if (return_type == "BYTE")
     {
-         cbf.emit("ret i32 0}");
+         cbf.emit("ret i32 0\n}");
           return;
     }
     if (return_type == "BOOL"){
-         cbf.emit("ret i32 false}");
+         cbf.emit("ret i32 false\n}");
           return;
     }
     }
@@ -150,10 +149,10 @@ void varDefintionGenerate(string type, string var_name){
         cbf.emit(var_name + " = alloca i32");        
         cbf.emit("store i32 " + reg_from +", i32* " + var_name);
       }
-void varDefintionAndAssignmentGenerate(string llvm_var, string exp_llvm_name, string exp_type,
+void varDefintionAndAssignmentGenerate(string llvm_var, string expr_value, string exp_type,
 vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIndex>>& exp_false_list){
         string llvm_var_name = llvm_var;
-        string reg_from = exp_llvm_name;
+        string reg_from = expr_value;
         if(exp_type == "BOOL")
         {
             string true_label = cbf.genLabel();
@@ -175,7 +174,8 @@ vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIn
 
         cbf.emit(llvm_var_name + " = alloca i32");
         cbf.emit("store i32 " + reg_from + ", i32* " + llvm_var_name);
-    }
+}
+
 string opcode_to_cmd(string op, string type){
 
     bool is_signed = (type == "INT");
@@ -224,4 +224,42 @@ void resolve_jump_next_line(string startLabel,vector<pair<int,BranchLabelIndex>>
     cbf.bpatch(jump_list, labels_vec.at(0));
     }
 }
-#endif 
+
+void validateBinop(string operation, string second_operand)
+{
+    if(operation == "/") //check if zero division
+        {
+            string is_zero = rgs.freshVar();
+            cbf.emit(is_zero + " = icmp eq i32 " + second_operand +", 0");
+            int jump_line = cbf.emit("br i1 " + is_zero + ", label @, label @");
+            string zero_label = cbf.genLabel();
+            cbf.emit("call void @print (i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.error, i32 0, i32 0))");
+            cbf.emit("call void @exit(i32 0)");
+            int jump_next_line = cbf.emit("br label @");
+            
+            string not_zero_label = cbf.genLabel();
+
+            cbf.bpatch(cbf.makelist({jump_line, FIRST}), zero_label);
+            cbf.bpatch(cbf.makelist({jump_line, SECOND}), not_zero_label);
+            cbf.bpatch(cbf.makelist({jump_next_line, FIRST}), not_zero_label);  
+        }
+}
+
+void emitBool(string llvm_name,vector<pair<int,BranchLabelIndex>> true_list,vector<pair<int,BranchLabelIndex>> false_list)
+{
+    string true_label = cbf.genLabel();
+    int true_line = cbf.emit("br label @");
+    string false_label = cbf.genLabel();
+    
+    int false_line = cbf.emit("br label @");
+    string return_label = cbf.genLabel();
+
+    cbf.emit(llvm_name + " = phi i32 [1, %" + true_label +"], [0, %" + false_label +"]");
+
+    cbf.bpatch(true_list, true_label);
+    cbf.bpatch(false_list, false_label);
+
+    cbf.bpatch(cbf.makelist({true_line, FIRST}), return_label);
+    cbf.bpatch(cbf.makelist({false_line, FIRST}), return_label);
+}
+#endif
