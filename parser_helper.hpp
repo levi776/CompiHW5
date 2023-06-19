@@ -109,7 +109,7 @@ void bpVector(vector<pair<int,BranchLabelIndex>> nextlist,string f_label = ""){
         if(f_label == "")
         {
          label = cbf.genLabel();
-         cbf.emit("bp vector bo boo");
+         //cbf.emit("bp vector bo boo");
         }
         else {
             label = f_label;

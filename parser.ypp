@@ -231,17 +231,26 @@ Statement
         }
     | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER
 {    
+    
+        //bpVector($4.trueList,$6.label); //from lecture, need to check if this is true...
+        // IN SECOND THOUGHT : we want to produce the IF before the actual code itself. hence in CHECK_TYPE_MARKER
         $$.nextList = cbf.merge($4.falseList, $6.nextList);
         $$.nextList = cbf.merge($$.nextList, $7.nextList);
-        $$.breakList = $6.breakList;
-        $$.contList = $6.contList;
+        $$.breakList = $6.breakList; //why do we need this here?
+        $$.contList = $6.contList; //the same, why do we need this here?
 }
     | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER ELSE
      {
         _stack.push_scope();
-        $$.nextList = $7.nextList;
+        //$$.nextList = $7.nextList; //this means nothing.
         bpVector($4.falseList);
+        /*S → if (B) M1 S1 N else M2 S2
 
+        backpatch(B.trueList, M1.instr);//bp of true list is done at CHECK_TYPE_MARKER
+        backpatch(B.falseList, M2.instr);// done
+        temp = S1.nextList ++ N.nextList;
+        S.nextList = temp ++ S2.nextList;
+        */
     } Statement 
     {
         //TODO: return to understand
@@ -249,8 +258,10 @@ Statement
         //int line = cbf.emit("br label @");
         //cbf.emit("Statement: line");
         //auto temp = cbf.merge(cbf.makelist({line, FIRST}), );
-        auto temp = cbf.merge($6.nextList, $9.nextList);
+        auto temp = cbf.merge($6.nextList, $9.nextList);//6= statemnt, 9 = ???? 
         $$.nextList = cbf.merge(temp, $10.nextList);
+
+
         $$.breakList = cbf.merge($6.breakList, $10.breakList);
         $$.contList = cbf.merge($6.contList, $10.contList);
         
@@ -343,16 +354,15 @@ POP_SCOPE_MARKER
     : /*epsilon*/ 
     {
         //todo understand
+        
         _stack.pop_scope();       
     }
     ;
 CHECK_TYPE_MARKER
     : Exp {
         if(notBool($1.type)) errorMismatch(yylineno);
-        //TODO: UNDERSTAND
-       // string label = cbf.genLabel();
-       // cbf.emit("CHECK_TYPE_MARKER: genLabel");
-       // bpVector($1.trueList, label); // we want same label as before, hence do not delete label.
+        //TODO: UNDERSTAND -> we want to put here the next of if, because we want to print the branching before the printing of the function.
+        bpVector($1.trueList); // we want same label as before, hence do not delete label.
         $$.falseList = $1.falseList;
         $$.trueList = $1.trueList;
         }
