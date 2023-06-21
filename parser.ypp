@@ -255,13 +255,9 @@ Statement
     {
         //TODO: return to understand
         _stack.pop_scope();
-        //int line = cbf.emit("br label @");
-        //cbf.emit("Statement: line");
-        //auto temp = cbf.merge(cbf.makelist({line, FIRST}), );
-        auto temp = cbf.merge($6.nextList, $9.nextList);//6= statemnt, 9 = ???? 
+        int line = cbf.emit("br label @");
+        auto temp = cbf.merge(cbf.makelist({line, FIRST}),$6.nextList);
         $$.nextList = cbf.merge(temp, $10.nextList);
-
-
         $$.breakList = cbf.merge($6.breakList, $10.breakList);
         $$.contList = cbf.merge($6.contList, $10.contList);
         
