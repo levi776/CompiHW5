@@ -270,9 +270,7 @@ Statement
         //TODO: understand
         //NIKITA'S COMMENT: There must be a jump to a label BEFORE it definition....:
         int line = cbf.emit("br label @");
-        cbf.emit("WHILE: line");
         $$.label = cbf.genLabel();
-
         const auto& list = cbf.makelist({line, FIRST});
         bpVector(list, string($$.label));
     } 
