@@ -146,7 +146,8 @@ Statements
         $$.contList = $1.contList;
         }
     | Statements 
-    { bpVector($1.nextList);} 
+    { bpVector($1.nextList);
+    cbf.emit("statements");} 
      Statement 
     {
         $$.nextList = $3.nextList; 
@@ -210,7 +211,7 @@ Statement
       //TODO: refference
       
       //resolve_jump_next_line(string($1.startLabel),$1.jumpList);
-       cbf.emit($1.label);
+     cbf.emit($1.label);
        }
     | RETURN SC { 
         if(!isVoid()||_stack.getCurrentfunctionreturnType()!="VOID") errorMismatch(yylineno); 
@@ -221,13 +222,10 @@ Statement
         if(strcmp($2.type, "BOOL") == 0)
         {
             $2.llvm_name = rgs.freshVar();
-            emitBool($2.llvm_name, $2.trueList,$2.falseList);
+            emitBool($2.llvm_name, $2.trueList, $2.falseList);
     
         }
         cbf.emit("ret i32 " + $2.llvm_name);
-
-
-
         }
     | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER
 {    
@@ -243,12 +241,14 @@ Statement
      {
         _stack.push_scope();
         //$$.nextList = $7.nextList; //this means nothing.
-        bpVector($4.falseList);
+        bpVector($4.falseList); // HERE IS PROBLEM
+        cbf.emit("IF falseList");
+        
         /*S → if (B) M1 S1 N else M2 S2
 
         backpatch(B.trueList, M1.instr);//bp of true list is done at CHECK_TYPE_MARKER
         backpatch(B.falseList, M2.instr);// done
-        temp = S1.nextList ++ N.nextList;
+        temp = S1.nextList ++ N.nextList; 
         S.nextList = temp ++ S2.nextList;
         */
     } Statement 
@@ -260,42 +260,39 @@ Statement
         $$.nextList = cbf.merge(temp, $10.nextList);
         $$.breakList = cbf.merge($6.breakList, $10.breakList);
         $$.contList = cbf.merge($6.contList, $10.contList);
-        
     }
     
     
     | WHILE 
     {
+        //this is M1
         _stack.push_scope();_stack.updateInWhile(true);
-        //TODO: understand
         //NIKITA'S COMMENT: There must be a jump to a label BEFORE it definition....:
-        int line = cbf.emit("br label @");
-        $$.label = cbf.genLabel();
-        const auto& list = cbf.makelist({line, FIRST});
-        bpVector(list, string($$.label));
+        int line = cbf.emit("br label @"); //this is M1.instr
+        $1.label = cbf.genLabel(); // we want to store the label somewhere, so we can use it later. 
+        // it could be $2 or anything else , but $1 isn't used anyway
+        //*auto list = cbf.makelist({line, FIRST});
+        //bpVector(list, string($$.label));
     } 
     LPAREN Exp 
     { 
         if(notBool($4.type)) errorMismatch(yylineno);
-        //TODO: understand
-        $$.label = cbf.genLabel();
-        cbf.emit("while something exp: genLabel");
+        cbf.emit("lparen exp");
+        auto label = cbf.genLabel();
+        bpVector($4.trueList, string(label));
+        cbf.emit("lparen exp bpvector");
+        //idea 1 : ADD SEMANTIC IS_FUNC and then use it here.
 
-        bpVector($4.trueList, string($$.label));
-        
     } 
     RPAREN Statement 
     {
-        //todo understand
         _stack.updateInWhile(false);
         _stack.pop_scope();
-        bpVector($7.contList,string($2.label));
-        bpVector($7.nextList,string($2.label));
+        cbf.emit("RPAREN Statement");
+        bpVector($7.contList,string($1.label));
+        bpVector($7.nextList,string($1.label));
         $$.nextList = cbf.merge($4.falseList, $7.breakList);
-        cbf.emit("br label %" + $2.label);
-        cbf.emit("While LPAREN Exp RPAREN Statement");
-
-
+        cbf.emit("br label %" + $1.label);
     }
     | BREAK SC 
     { 
@@ -325,9 +322,7 @@ Call
                       /*truelist_list*/$3.trueListList,
                       /*falselist_list*/$3.falseListList,
                       string($$.llvm_name));
-
-
-
+        //cbf.emit($$.label);
 
     }
     | ID LPAREN RPAREN 
@@ -395,6 +390,7 @@ Exp
         $$.llvm_name = $2.llvm_name;
         $$.trueList = $2.trueList;
         $$.type = $2.type;
+        $$.is_func = $2.is_func;
         }
     | Exp MD_BINOP Exp %prec MD_BINOP {
          if(notIntOrByte($1.type,$3.type)) errorMismatch(yylineno); $$.type = biggerType($1.type, $3.type);
@@ -429,32 +425,36 @@ Exp
         _stack.validateId(string($1.name),yylineno); 
         $$.type = _stack.getType(string($1.name)).data();
         $$.llvm_name = _stack.getLlvmName(string($1.name));
+        $$.is_func = false;
            //TODO: check if correct
-           /* if(strcmp($$.type, "BOOL") == 0)
+        if(strcmp($$.type, "BOOL") == 0)
             {
                 string compare_reg = rgs.freshVar();
                 cbf.emit(compare_reg + " = icmp eq i32 1, " + $$.llvm_name);
                 int line = cbf.emit("br i1 " + compare_reg + ", label @, label @");
-
                 $$.trueList = cbf.makelist({line, FIRST});
                 $$.falseList = cbf.makelist({line, SECOND});
-            }*/
+            }
         }
     | Call {
-         $$.type=$1.type; 
+        $$.type=$1.type; 
         $$.name = $1.name; 
         $$.type = $1.type;
         $$.llvm_name = $1.llvm_name;
+        $$.is_func = true;
+
     }
     | NUM { $$.type=$1.type; 
         $$.type = $1.type;
         $$.name = $1.name;
         $$.llvm_name = to_string($$.intVal);
+        $$.is_func = false;
         }
     | NUM B {if(byteTooLarge($1.intVal)) {errorByteTooLarge(yylineno, $1.strVal);}
           $$.name = $1.name;
           $$.type= $2.type; 
           $$.llvm_name = to_string($$.intVal);
+          $$.is_func = false;
           }
 
     | STRING 
@@ -465,26 +465,33 @@ Exp
         string str($1.strVal);
         str = str.substr(1, str.length() - 2);
         $$.name = str.data();
+        $$.is_func = false;
         int len = strlen($$.name) + 1;
         cbf.emitGlobal(global_var + " = constant [" + to_string(str.length() + 1) + " x i8] c\"" + str + "\\00\"");
         cbf.emit($$.llvm_name + " = getelementptr ["+to_string(len)+" x i8], ["+to_string(len)+" x i8]* "+(global_var)+", i32 0, i32 0"); 
     }
     | TRUE { $$.type=$1.type;
         $$.type = $1.type;
-        $$.llvm_name = VAR_EMPTY_STR; 
+        $$.llvm_name = string(VAR_EMPTY_STR);
+        $$.is_func = false;
         }
     | FALSE {
         $$.type=$1.type;
-        $$.llvm_name = string(VAR_EMPTY_STR); 
+        $$.llvm_name = string(VAR_EMPTY_STR);
+        $$.is_func = false;
           }
     | NOT Exp { if(notBool($2.type)) errorMismatch(yylineno); $$.type = $2.type;
             $$.trueList = $2.falseList;
             $$.falseList = $2.trueList;            
-            $$.llvm_name = string(VAR_EMPTY_STR); }
+            $$.llvm_name = string(VAR_EMPTY_STR);
+            $$.is_func = $2.is_func; 
+            }
     | Exp AND 
     {
         if(notBool($1.type)) errorMismatch(yylineno);
         bpVector($1.trueList);
+        cbf.emit("EXP AND EXP");
+        
     }
     Exp 
     { 
@@ -496,11 +503,14 @@ Exp
         }
     | Exp OR 
     {
-        if(notBool($1.type)) errorMismatch(yylineno); bpVector($1.falseList);
+        if(notBool($1.type)) errorMismatch(yylineno);
+         bpVector($1.falseList);
+        cbf.emit("EXP OR EXP");
+        //need to do short circuit now.
     } Exp 
-    {  
+    {
         if(notBool($4.type)) errorMismatch(yylineno); 
-        $$.type=$1.type; 
+        $$.type = $1.type; 
         $$.falseList = $4.falseList;
         $$.llvm_name = VAR_EMPTY_STR;
         $$.trueList = cbf.merge($1.trueList, $4.trueList);
@@ -508,18 +518,57 @@ Exp
     }
     | Exp EQ_RELOP Exp %prec EQ_RELOP { if(notIntOrByte($1.type,$3.type)) {errorMismatch(yylineno);} $$.type = "BOOL";
         std::string branch_str = rgs.freshVar("branch");
-        cbf.emit(branch_str + " = icmp " + opcode_to_cmd($2.name, $1.type) + " i32 " + $1.llvm_name + ", " + $3.llvm_name);
-        int branch_location = cbf.emit("br i1 " + branch_str + ", label @, label @");
+        //need to put it inside functions
+        string reg1;
+        string reg2;
+        if ($1.is_func){
+        //store func inside variable and return it...
+        reg1 = rgs.freshVar();
+        cbf.emit(reg1+" = "+$1.label);
+        }
+        else{
+        reg1 = $1.llvm_name;
+        }
+        if ($3.is_func){
+         reg2 = rgs.freshVar();
+        cbf.emit(reg2+" = "+$3.label);
+        }
+        else{
+            reg2 = $3.llvm_name;
+        }
+        cbf.emit(branch_str + " = icmp " + opcode_to_cmd($2.name, $1.type) + " i32 " + reg1 + ", " + reg2);
+        int branch_location = cbf.emit("RELOP br i1 " + branch_str + ", label @, label @");
         $$.trueList = cbf.makelist({branch_location, FIRST});
         $$.falseList = cbf.makelist({branch_location, SECOND});
-        $$.llvm_name = string(VAR_EMPTY_STR); }
+        $$.llvm_name = string(VAR_EMPTY_STR);
+        $$.is_func = false; 
+        }
     | Exp RE_RELOP Exp %prec RE_RELOP { if(notIntOrByte($1.type,$3.type)) {errorMismatch(yylineno);} $$.type = "BOOL";
         std::string branch_str = rgs.freshVar("branch");
+        string reg1;
+        string reg2;
+        if ($1.is_func){
+        //store func inside variable and return it...
+        reg1 = rgs.freshVar();
+        cbf.emit(reg1+" = "+$1.label);
+        }
+        else{
+        reg1 = $1.llvm_name;
+        }
+        if ($3.is_func){
+         reg2 = rgs.freshVar();
+        cbf.emit(reg2+" = "+$3.label);
+        }
+        else{
+            reg2 = $3.llvm_name;
+        }
         cbf.emit(branch_str + " = icmp " + opcode_to_cmd($2.name, $1.type) + " i32 " + $1.llvm_name + ", " + $3.llvm_name);
-        int branch_location = cbf.emit("br i1 " + branch_str + ", label @, label @");
+        int branch_location = cbf.emit("RELOP br i1 " + branch_str + ", label @, label @");
         $$.trueList = cbf.makelist({branch_location, FIRST});
         $$.falseList = cbf.makelist({branch_location, SECOND});
-        $$.llvm_name = VAR_EMPTY_STR; }
+        $$.llvm_name = VAR_EMPTY_STR; 
+        }
+
     | LPAREN Type RPAREN Exp {   
         if(notIntOrByte($2.type,$4.type)) 
         {

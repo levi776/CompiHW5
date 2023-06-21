@@ -22,6 +22,7 @@ typedef struct token_att {
      vector<vector<pair<int,BranchLabelIndex>>> trueListList;
     vector<vector<pair<int,BranchLabelIndex>>> falseListList;
     string label;
+    bool is_func;
     //TODO: 
     /* 
     

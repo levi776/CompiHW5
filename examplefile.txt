@@ -1,18 +1,26 @@
-override int func(int i, int x , int y ) {
-     i=2; }
-override int func(int i, int j) {
-     j=3; }
-override byte func(byte i) {
-     i=3b;
-     return 2b; 
-     }
+
+bool bunc(int y)
+{
+    bool var = false;
+    if(y == 1)
+    {
+    var = true;
+    }
+    else {
+    var = false ; 
+    }
+    return var;
+}
+int func(int x){
+    return 1;
+}
+int junc(int y)
+{
+    return 2;
+}
 void main(){
-    if(2<3){
-    byte c = func(2b);
-    }
-    else{
-        printi(2); 
-    }
-    
-    return;
+    if(1>2 or 2>3)
+    {
+    printi(2);
+   }
 }

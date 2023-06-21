@@ -79,11 +79,12 @@ vector<string> parseString(string str){
 }
 void closeFunction(vector<pair<int,BranchLabelIndex>>& nextlist, string return_type)
 {
-    bpVector(nextlist,"");
-    if(return_type == "VOID") 
-    {
-        cbf.emit("ret void\n}");
-        return;
+  cbf.emit("CloseFunction");
+  bpVector(nextlist, "");
+  if (return_type == "VOID")
+  {
+    cbf.emit("ret void\n}");
+    return;
     }
     if (return_type == "INT")
     {
@@ -165,9 +166,13 @@ vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIn
             string next_label = cbf.genLabel();
             auto true_list = cbf.makelist({true_line, FIRST});
             auto false_list = cbf.makelist({false_line, FIRST});
+            cbf.emit(" varDefintionAndAssignmentGenerate true_list");
             bpVector(true_list, next_label);
+            cbf.emit(" varDefintionAndAssignmentGenerate false_list");
             bpVector(false_list, next_label);
+            cbf.emit(" varDefintionAndAssignmentGenerate exp_true_list");
             bpVector(exp_true_list, true_label);
+            cbf.emit(" varDefintionAndAssignmentGenerate exp_false_list");
             bpVector(exp_false_list, false_label);
 
             string reg_phi = rgs.freshVar();
@@ -253,23 +258,19 @@ void validateBinop(string operation, string second_operand)
 
 void emitBool(string llvm_name,vector<pair<int,BranchLabelIndex>> true_list,vector<pair<int,BranchLabelIndex>> false_list)
 {
-    string true_label = cbf.genLabel();
-    int true_line = cbf.emit("br label @");
-    cbf.emit("emitBOOLEN CABOOLEN: jump nex-line-yo line popop");
+        // i dont think we need new labels  here, we need previous labels.
+        string true_label = cbf.genLabel();
+        int true_line = cbf.emit("br label @");
+        string false_label = cbf.genLabel();
+        int false_line = cbf.emit("br label @");
+        string return_label = cbf.genLabel();
+        cbf.emit("emitBool "+llvm_name + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
 
-    string false_label = cbf.genLabel();
-    
-    int false_line = cbf.emit("br label @");
+        cbf.bpatch(true_list, true_label);
+        cbf.bpatch(false_list, false_label);
 
-    string return_label = cbf.genLabel();
-
-    cbf.emit(llvm_name + " = phi i32 [1, %" + true_label +"], [0, %" + false_label +"]");
-
-    cbf.bpatch(true_list, true_label);
-    cbf.bpatch(false_list, false_label);
-
-    cbf.bpatch(cbf.makelist({true_line, FIRST}), return_label);
-    cbf.bpatch(cbf.makelist({false_line, FIRST}), return_label);
+        cbf.bpatch(cbf.makelist({true_line, FIRST}), return_label);
+        cbf.bpatch(cbf.makelist({false_line, SECOND}), return_label); //SECOND WAS FIRST BEFOREHAND
 }
 
 bool notLastBool(vector<string>::iterator it, vector<string>::iterator end){
