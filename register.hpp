@@ -20,9 +20,15 @@ public:
 
     std::string freshVar(std::string var_name = "", bool is_global = false)
     {
+        if( var_name != "main")
+        {
         std::string prefix = (is_global) ? "@" : "%";
         if(var_name == "") var_name = "ig";
-        return prefix + var_name + "_" + std::to_string(num_registers++);
+        return prefix + var_name + "_" + std::to_string(num_registers++);}
+        else{
+        assert(is_global);
+        return "@main";
+        }
     }
 };
 

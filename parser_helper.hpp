@@ -37,7 +37,7 @@ void printGlobalAndCodeBuffer()
     cbf.printCodeBuffer();
 }
 
-void declareFunction(bool is_override, string func_name, string func_arguments_type_string, string func_arguments_name_string, string fresh_func_name)
+void declareFunction(bool is_override, string func_name, string func_arguments_type_string, string func_arguments_name_string, string fresh_func_name, string func_type)
 {
     //string fresh_func_name = rgs.freshVar(func_name, /*is_global = */true); -> this is now created in parser.ypp
 
@@ -45,7 +45,8 @@ void declareFunction(bool is_override, string func_name, string func_arguments_t
     string arguments = "";
 
     vector<string> types_vec = parseString(func_arguments_type_string);
-    vector<string> names_vec = parseString(func_arguments_name_string); 
+    vector<string> names_vec = parseString(func_arguments_name_string);
+    string llvm_func_type = convertToLLVMType(func_type);
     vector<string> load_params;
     for(auto type_iterator = types_vec.begin(), name_iterator = names_vec.begin(); type_iterator < types_vec.end(); type_iterator++, name_iterator++)
     {
@@ -60,7 +61,7 @@ void declareFunction(bool is_override, string func_name, string func_arguments_t
         cnt ++;
     }
     
-    string LLVM_FUNC_DEFINITION = "define" + fresh_func_name + " (" + arguments + " ) {"  ;
+    string LLVM_FUNC_DEFINITION = "define " +llvm_func_type+" " +fresh_func_name + " (" + arguments + " ) {"  ;
     cbf.emit(LLVM_FUNC_DEFINITION);
     for(string load_param_str : load_params)
     {
@@ -79,7 +80,7 @@ vector<string> parseString(string str){
 }
 void closeFunction(vector<pair<int,BranchLabelIndex>>& nextlist, string return_type)
 {
-  cbf.emit("CloseFunction");
+  //cbf.emit("CloseFunction");
   bpVector(nextlist, "");
   if (return_type == "VOID")
   {
@@ -97,7 +98,7 @@ void closeFunction(vector<pair<int,BranchLabelIndex>>& nextlist, string return_t
           return;
     }
     if (return_type == "BOOL"){
-         cbf.emit("ret i32 false\n}");
+         cbf.emit("ret i32 0\n}"); // we preffer i32 0 and not i32 false, i32 false should be i1 false instead.
           return;
     }
     }
@@ -110,7 +111,7 @@ void bpVector(vector<pair<int,BranchLabelIndex>> nextlist,string f_label = ""){
         if(f_label == "")
         {
          label = cbf.genLabel();
-         //cbf.emit("bp vector bo boo");
+         
         }
         else {
             label = f_label;
@@ -121,12 +122,10 @@ void bpVector(vector<pair<int,BranchLabelIndex>> nextlist,string f_label = ""){
 void varDefintionGenerate(string type, string var_name){
     //need to understand and change names but keep the logic
     string reg_from = "0";
-    if (type == "BOOL")
+    if (type == "BOOL") // a way to evaluate bool.
         {
           int false_line = cbf.emit("br label @");
-          cbf.emit("varDefintionGenerate: false line popop");
           int true_line = cbf.emit("br label @");
-          cbf.emit("varDefintionGenerate: true line  yoyo popop");
 
           string true_label = cbf.genLabel();
           int true_line_to_next = cbf.emit("br label @");
@@ -142,7 +141,7 @@ void varDefintionGenerate(string type, string var_name){
           cbf.bpatch(cbf.makelist({true_line_to_next, FIRST}), next_label);
           cbf.bpatch(cbf.makelist({false_line_to_next, FIRST}), next_label);
 
-          string reg_phi = rgs.freshVar();//for this we need the ig?
+          string reg_phi = rgs.freshVar();
           cbf.emit(reg_phi + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
           reg_from = reg_phi;
         }
@@ -155,29 +154,20 @@ vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIn
         string reg_from = expr_value;
         if(exp_type == "BOOL")
         {
-            string true_label = cbf.genLabel();
-            int true_line = cbf.emit("br label @");
-            cbf.emit("varDefintionAndAssignmentGenerate: false line popop");
-
-            string false_label = cbf.genLabel();
-            int false_line = cbf.emit("br label @");
-            cbf.emit("varDefintionAndAssignmentGenerate: false line popop");
-
-            string next_label = cbf.genLabel();
-            auto true_list = cbf.makelist({true_line, FIRST});
-            auto false_list = cbf.makelist({false_line, FIRST});
-            cbf.emit(" varDefintionAndAssignmentGenerate true_list");
-            bpVector(true_list, next_label);
-            cbf.emit(" varDefintionAndAssignmentGenerate false_list");
-            bpVector(false_list, next_label);
-            cbf.emit(" varDefintionAndAssignmentGenerate exp_true_list");
-            bpVector(exp_true_list, true_label);
-            cbf.emit(" varDefintionAndAssignmentGenerate exp_false_list");
-            bpVector(exp_false_list, false_label);
-
-            string reg_phi = rgs.freshVar();
-            cbf.emit(reg_phi + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
-            reg_from = reg_phi;
+          string true_label = cbf.genLabel();
+          int true_line = cbf.emit("br label @");
+          string false_label = cbf.genLabel();
+          int false_line = cbf.emit("br label @");  
+          string next_label = cbf.genLabel();
+          auto true_list = cbf.makelist({true_line, FIRST});
+          auto false_list = cbf.makelist({false_line, FIRST});
+          bpVector(true_list, next_label);
+          bpVector(false_list, next_label);
+          bpVector(exp_true_list, true_label);
+          bpVector(exp_false_list, false_label);
+          string reg_phi = rgs.freshVar();
+          cbf.emit(reg_phi + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
+          reg_from = reg_phi;
         }
         if(flag) // flag has no meaning, we just wanna use this function in two different places
         {
@@ -246,7 +236,7 @@ void validateBinop(string operation, string second_operand)
             cbf.emit("call void @print (i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.error, i32 0, i32 0))");
             cbf.emit("call void @exit(i32 0)");
             int jump_next_line = cbf.emit("br label @");
-            cbf.emit("validateBinop:");
+            //cbf.emit("validateBinop:");
 
             string not_zero_label = cbf.genLabel();
 
@@ -264,7 +254,7 @@ void emitBool(string llvm_name,vector<pair<int,BranchLabelIndex>> true_list,vect
         string false_label = cbf.genLabel();
         int false_line = cbf.emit("br label @");
         string return_label = cbf.genLabel();
-        cbf.emit("emitBool "+llvm_name + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
+        cbf.emit(llvm_name + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
 
         cbf.bpatch(true_list, true_label);
         cbf.bpatch(false_list, false_label);

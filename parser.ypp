@@ -58,7 +58,7 @@
 %nonassoc COMMA;
 %nonassoc LBRACE;
 %nonassoc RBRACE;
-%nonassoc ID;                                                                      
+%nonassoc ID; 
 %nonassoc NUM;    
 %nonassoc STRING;
 
@@ -104,7 +104,8 @@ FuncDecl
                         /*func_name=*/ string($3.name),
                         /*func_arguments_type_string=*/ string($5.type),
                         /*func_arguments_type_string=*/ string($5.name),
-                        /*fresh_func_name*/ llvm_name); 
+                        /*fresh_func_name*/ llvm_name,
+                        /*func_type*/ string($2.type)); 
     }
     RPAREN LBRACE 
     {_stack.push_scope();_stack.symbol_table_add_function_parameter_entries(string($5.name), string($5.type), yylineno);} 
@@ -146,14 +147,14 @@ Statements
         $$.contList = $1.contList;
         }
     | Statements 
-    { bpVector($1.nextList);
-    cbf.emit("statements");} 
+      { 
+        bpVector($1.nextList);
+      } 
      Statement 
-    {
+        {
         $$.nextList = $3.nextList; 
         $$.breakList = cbf.merge($1.breakList, $3.breakList);
         $$.contList = cbf.merge($1.contList, $3.contList);
-        //cbf.emit("end of statement");
         }
     ;
 Statement 
@@ -227,84 +228,65 @@ Statement
         }
         cbf.emit("ret i32 " + $2.llvm_name);
         }
-    | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER
-{    
-    
+    | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN M1 Statement NEXT POP_SCOPE_MARKER
+    {      
+        //S → if (B) M S1
+        //NEXT HERE WILL PRODUCE REDUDANT JUMP
         //bpVector($4.trueList,$6.label); //from lecture, need to check if this is true...
-        // IN SECOND THOUGHT : we want to produce the IF before the actual code itself. hence in CHECK_TYPE_MARKER
-        $$.nextList = cbf.merge($4.falseList, $6.nextList);
-        $$.nextList = cbf.merge($$.nextList, $7.nextList);
-        $$.breakList = $6.breakList; //why do we need this here?
-        $$.contList = $6.contList; //the same, why do we need this here?
-}
-    | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN Statement POP_SCOPE_MARKER ELSE
-     {
+        bpVector($4.trueList,$6.label);        
+        $$.nextList = cbf.merge($4.falseList, $7.nextList);
+        $$.nextList = cbf.merge($$.nextList, $8.nextList);
+        $$.breakList = $7.breakList; //why do we need this here?
+        $$.contList = $7.contList; //the same, why do we need this here? 
+        }
+    | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN M1 Statement NEXT POP_SCOPE_MARKER ELSE 
+    {
         _stack.push_scope();
-        //$$.nextList = $7.nextList; //this means nothing.
-        bpVector($4.falseList); // HERE IS PROBLEM
-        cbf.emit("IF falseList");
-        
-        /*S → if (B) M1 S1 N else M2 S2
 
-        backpatch(B.trueList, M1.instr);//bp of true list is done at CHECK_TYPE_MARKER
-        backpatch(B.falseList, M2.instr);// done
-        temp = S1.nextList ++ N.nextList; 
-        S.nextList = temp ++ S2.nextList;
-        */
-    } Statement 
+    }   M2 Statement 
     {
-        //TODO: return to understand
+
+        bpVector($4.trueList,$6.label);
+        bpVector($4.falseList,$12.label);
         _stack.pop_scope();
+        auto temp = cbf.merge($7.nextList,$8.nextList);
         int line = cbf.emit("br label @");
-        auto temp = cbf.merge(cbf.makelist({line, FIRST}),$6.nextList);
-        $$.nextList = cbf.merge(temp, $10.nextList);
-        $$.breakList = cbf.merge($6.breakList, $10.breakList);
-        $$.contList = cbf.merge($6.contList, $10.contList);
-    }
+        auto next_line_for_else = cbf.makelist({line,FIRST});
+        $$.nextList = cbf.merge(temp, $13.nextList);
+        $$.nextList = cbf.merge ($$.nextList, next_line_for_else);
+        $$.breakList = cbf.merge($7.breakList, $13.breakList);
+        $$.contList = cbf.merge($7.contList, $13.contList);
+    }   
     
     
-    | WHILE 
+    | WHILE M3
     {
-        //this is M1
         _stack.push_scope();_stack.updateInWhile(true);
-        //NIKITA'S COMMENT: There must be a jump to a label BEFORE it definition....:
-        int line = cbf.emit("br label @"); //this is M1.instr
-        $1.label = cbf.genLabel(); // we want to store the label somewhere, so we can use it later. 
-        // it could be $2 or anything else , but $1 isn't used anyway
-        //*auto list = cbf.makelist({line, FIRST});
-        //bpVector(list, string($$.label));
     } 
     LPAREN Exp 
     { 
-        if(notBool($4.type)) errorMismatch(yylineno);
-        cbf.emit("lparen exp");
-        auto label = cbf.genLabel();
-        bpVector($4.trueList, string(label));
-        cbf.emit("lparen exp bpvector");
-        //idea 1 : ADD SEMANTIC IS_FUNC and then use it here.
-
+        if(notBool($5.type)) errorMismatch(yylineno);
     } 
-    RPAREN Statement 
+    RPAREN M2 Statement 
     {
         _stack.updateInWhile(false);
         _stack.pop_scope();
-        cbf.emit("RPAREN Statement");
-        bpVector($7.contList,string($1.label));
-        bpVector($7.nextList,string($1.label));
-        $$.nextList = cbf.merge($4.falseList, $7.breakList);
-        cbf.emit("br label %" + $1.label);
+        bpVector($9.nextList, $2.label);
+        bpVector($9.contList, $2.label);
+        bpVector($5.trueList, $8.label);
+        $$.nextList = cbf.merge($5.falseList, $9.breakList);
+        cbf.emit("br label %" + $2.label);
     }
     | BREAK SC 
     { 
         if(!_stack.inWhileLoop()) errorUnexpectedBreak(yylineno);
-                
-       
-        $$.breakList = cbf.makelist({cbf.emit("br label @"), FIRST});
-        
+        int line = cbf.emit("br label @");
+        $$.breakList = cbf.makelist({line, FIRST});
     }
     | CONTINUE SC { 
         if(!_stack.inWhileLoop()) errorUnexpectedContinue(yylineno);
-        $$.contList = cbf.makelist({cbf.emit("br label @"), FIRST});
+        int line = cbf.emit("br label @");
+        $$.contList = cbf.makelist({line, FIRST});
         }
     ;
 Call
@@ -323,6 +305,7 @@ Call
                       /*falselist_list*/$3.falseListList,
                       string($$.llvm_name));
         //cbf.emit($$.label);
+        $$.is_func = true;
 
     }
     | ID LPAREN RPAREN 
@@ -331,9 +314,11 @@ Call
         _stack.validateCall(string($1.name), "",yylineno);
         $$.name = $1.name; 
         $$.type = _stack.getFuncReturnType($1.name,"").data();       
-        string str_name($1.name);
-        string call_str = "call " + convertToLLVMType(string($$.type)) + " @" + str_name + "()";
+        string str_name(_stack.getFunctionLlvmName(string($1.name),""));
+        string call_str = "call " + convertToLLVMType(string($$.type))  +" "+str_name + "()";
         $$.label = call_str;
+        $$.is_func = true;
+        
     }
     ;
 NEW_SCOPE_MARKER 
@@ -344,18 +329,36 @@ POP_SCOPE_MARKER
     {
         //todo understand
         
-        _stack.pop_scope();       
+        _stack.pop_scope();
     }
     ;
 CHECK_TYPE_MARKER
     : Exp {
         if(notBool($1.type)) errorMismatch(yylineno);
-        //TODO: UNDERSTAND -> we want to put here the next of if, because we want to print the branching before the printing of the function.
-        bpVector($1.trueList); // we want same label as before, hence do not delete label.
         $$.falseList = $1.falseList;
         $$.trueList = $1.trueList;
         }
     ;
+M1:
+    /*epsilon*/ {
+        $$.label = cbf.genLabel();
+    } ;
+M2:
+    /*epsilon*/ {
+       $$.label = cbf.genLabel();
+    } ;
+NEXT
+:  /*epsilon*/ {
+        int line = cbf.emit("br label @");
+        $$.nextList = cbf.makelist({line,FIRST});
+    };
+M3:
+   //SAME M FOR WHILE
+    {
+        int line = cbf.emit("br label @");
+        $$.label = cbf.genLabel();
+        cbf.bpatch(cbf.makelist({line,FIRST}),$$.label);
+    };
 ExpList
     : Exp 
     { 
@@ -424,8 +427,10 @@ Exp
     | ID {
         _stack.validateId(string($1.name),yylineno); 
         $$.type = _stack.getType(string($1.name)).data();
-        $$.llvm_name = _stack.getLlvmName(string($1.name));
+        string curr_llvm_name = _stack.getLlvmName(string($1.name));
         $$.is_func = false;
+        $$.llvm_name = rgs.freshVar();
+        cbf.emit($$.llvm_name + " = load i32, i32* " + curr_llvm_name );
            //TODO: check if correct
         if(strcmp($$.type, "BOOL") == 0)
             {
@@ -442,7 +447,16 @@ Exp
         $$.type = $1.type;
         $$.llvm_name = $1.llvm_name;
         $$.is_func = true;
-
+        if(strcmp($$.type, "BOOL") == 0)
+        {
+            string temp_reg = rgs.freshVar();//ziv change
+            string compare_reg = rgs.freshVar();
+            cbf.emit(temp_reg + " = " +$1.label);
+            cbf.emit(compare_reg + " = icmp eq i32 1, " + temp_reg);//ziv change
+            int line = cbf.emit("br i1 " + compare_reg + ", label @, label @");
+            $$.trueList = cbf.makelist({line, FIRST});
+            $$.falseList = cbf.makelist({line, SECOND});
+        }
     }
     | NUM { $$.type=$1.type; 
         $$.type = $1.type;
@@ -452,7 +466,7 @@ Exp
         }
     | NUM B {if(byteTooLarge($1.intVal)) {errorByteTooLarge(yylineno, $1.strVal);}
           $$.name = $1.name;
-          $$.type= $2.type; 
+          $$.type= $2.type;
           $$.llvm_name = to_string($$.intVal);
           $$.is_func = false;
           }
@@ -474,11 +488,15 @@ Exp
         $$.type = $1.type;
         $$.llvm_name = string(VAR_EMPTY_STR);
         $$.is_func = false;
+        int line = cbf.emit("br label @");
+        $$.trueList = cbf.makelist({line,FIRST});
         }
     | FALSE {
         $$.type=$1.type;
         $$.llvm_name = string(VAR_EMPTY_STR);
         $$.is_func = false;
+        int line = cbf.emit("br label @");
+        $$.falseList = cbf.makelist({line,FIRST});
           }
     | NOT Exp { if(notBool($2.type)) errorMismatch(yylineno); $$.type = $2.type;
             $$.trueList = $2.falseList;
@@ -489,31 +507,27 @@ Exp
     | Exp AND 
     {
         if(notBool($1.type)) errorMismatch(yylineno);
-        bpVector($1.trueList);
-        cbf.emit("EXP AND EXP");
-        
     }
-    Exp 
+    M1 Exp 
     { 
-        if(notBool($4.type)) errorMismatch(yylineno); 
+        if(notBool($5.type)) errorMismatch(yylineno); 
+        bpVector($1.trueList, $4.label);
         $$.type=$1.type; 
         $$.llvm_name = VAR_EMPTY_STR;
-        $$.trueList = $4.trueList;
-        $$.falseList = cbf.merge($1.falseList, $4.falseList);
+        $$.trueList = $5.trueList;
+        $$.falseList = cbf.merge($1.falseList, $5.falseList);
         }
     | Exp OR 
     {
         if(notBool($1.type)) errorMismatch(yylineno);
-         bpVector($1.falseList);
-        cbf.emit("EXP OR EXP");
-        //need to do short circuit now.
-    } Exp 
-    {
-        if(notBool($4.type)) errorMismatch(yylineno); 
+    } M1 Exp 
+    {   
+        if(notBool($5.type)) errorMismatch(yylineno);
+        bpVector($1.falseList,$4.label);
         $$.type = $1.type; 
-        $$.falseList = $4.falseList;
+        $$.falseList = $5.falseList;
         $$.llvm_name = VAR_EMPTY_STR;
-        $$.trueList = cbf.merge($1.trueList, $4.trueList);
+        $$.trueList = cbf.merge($1.trueList, $5.trueList);
 
     }
     | Exp EQ_RELOP Exp %prec EQ_RELOP { if(notIntOrByte($1.type,$3.type)) {errorMismatch(yylineno);} $$.type = "BOOL";
@@ -537,7 +551,7 @@ Exp
             reg2 = $3.llvm_name;
         }
         cbf.emit(branch_str + " = icmp " + opcode_to_cmd($2.name, $1.type) + " i32 " + reg1 + ", " + reg2);
-        int branch_location = cbf.emit("RELOP br i1 " + branch_str + ", label @, label @");
+        int branch_location = cbf.emit("br i1 " + branch_str + ", label @, label @");
         $$.trueList = cbf.makelist({branch_location, FIRST});
         $$.falseList = cbf.makelist({branch_location, SECOND});
         $$.llvm_name = string(VAR_EMPTY_STR);
@@ -563,7 +577,7 @@ Exp
             reg2 = $3.llvm_name;
         }
         cbf.emit(branch_str + " = icmp " + opcode_to_cmd($2.name, $1.type) + " i32 " + $1.llvm_name + ", " + $3.llvm_name);
-        int branch_location = cbf.emit("RELOP br i1 " + branch_str + ", label @, label @");
+        int branch_location = cbf.emit("br i1 " + branch_str + ", label @, label @");
         $$.trueList = cbf.makelist({branch_location, FIRST});
         $$.falseList = cbf.makelist({branch_location, SECOND});
         $$.llvm_name = VAR_EMPTY_STR; 

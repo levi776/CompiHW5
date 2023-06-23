@@ -1,26 +1,24 @@
+void printByValue(bool val) {
+	if (val)
+		print("val is true");
+	else {
+		print("val is false");
+	}
+}
 
-bool bunc(int y)
-{
-    bool var = false;
-    if(y == 1)
+void main() {
+
+	printByValue(1 == 1);
+	printByValue(false);
+
+	if(true)
     {
-    var = true;
+        print("true");
     }
-    else {
-    var = false ; 
-    }
-    return var;
-}
-int func(int x){
-    return 1;
-}
-int junc(int y)
-{
-    return 2;
-}
-void main(){
-    if(1>2 or 2>3)
+
+    if(false or false and  true)
     {
-    printi(2);
-   }
+        print("true");
+    }
+    
 }

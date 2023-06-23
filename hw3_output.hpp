@@ -11,7 +11,7 @@ typedef struct token_att {
     char* strVal;
     char* type;
     char* name;
-    string llvm_name; // name in llvm (var in refference TODO delete this comment)
+    string llvm_name; //var in nikita
     vector<pair<int,BranchLabelIndex>> trueList;
     vector<pair<int,BranchLabelIndex>> falseList;
     vector<pair<int,BranchLabelIndex>> nextList;
@@ -23,19 +23,6 @@ typedef struct token_att {
     vector<vector<pair<int,BranchLabelIndex>>> falseListList;
     string label;
     bool is_func;
-    //TODO: 
-    /* 
-    
-    
-
-   
-
-    
-    
-
-    
-    
-    */
     } tokenAtt;
 #define YYSTYPE tokenAtt
 
