@@ -25,6 +25,29 @@ string convertToLLVMType(string type)
     }
 }
 
+string evalBOOL()
+{
+  int false_line = cbf.emit("br label @");
+  int true_line = cbf.emit("br label @");
+
+  string true_label = cbf.genLabel();
+  int true_line_to_next = cbf.emit("br label @");
+  string false_label = cbf.genLabel();
+  int false_line_to_next = cbf.emit("br label @");
+  
+  string next_label = cbf.genLabel();
+
+  cbf.bpatch(cbf.makelist({false_line, FIRST}), false_label);
+  cbf.bpatch(cbf.makelist({true_line, FIRST}), true_label);
+
+  cbf.bpatch(cbf.makelist({true_line_to_next, FIRST}), next_label);
+  cbf.bpatch(cbf.makelist({false_line_to_next, FIRST}), next_label);
+
+  string reg_phi = rgs.freshVar();
+  cbf.emit(reg_phi + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
+  return reg_phi;
+}
+
 
 void initDeclarations()
 {
@@ -124,26 +147,7 @@ void varDefintionGenerate(string type, string var_name){
     string reg_from = "0";
     if (type == "BOOL") // a way to evaluate bool.
         {
-          int false_line = cbf.emit("br label @");
-          int true_line = cbf.emit("br label @");
-
-          string true_label = cbf.genLabel();
-          int true_line_to_next = cbf.emit("br label @");
-          
-          string false_label = cbf.genLabel();
-          int false_line_to_next = cbf.emit("br label @");
-          
-          string next_label = cbf.genLabel();
-
-          cbf.bpatch(cbf.makelist({false_line, FIRST}), false_label);
-          cbf.bpatch(cbf.makelist({true_line, FIRST}), true_label);
-
-          cbf.bpatch(cbf.makelist({true_line_to_next, FIRST}), next_label);
-          cbf.bpatch(cbf.makelist({false_line_to_next, FIRST}), next_label);
-
-          string reg_phi = rgs.freshVar();
-          cbf.emit(reg_phi + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
-          reg_from = reg_phi;
+          reg_from = evalBOOL();
         }
         cbf.emit(var_name + " = alloca i32");        
         cbf.emit("store i32 " + reg_from +", i32* " + var_name);
@@ -277,16 +281,33 @@ string funcCall(string func_ret_type,
                 string func_param_llvm_names,
                 vector<vector<pair<int,BranchLabelIndex>>> truelist_vec,
                 vector<vector<pair<int,BranchLabelIndex>>> falselist_vec,
-                string func_name)
+                string func_name)//,
+                //string start_label)
 {
     string call_str = "call " + convertToLLVMType(string(func_ret_type)) + " " + func_name + " (";
+    
+   // vector<string> labels_vec = parseString(start_label);
     vector<string> types_vec = parseString(func_param_types);
     vector<string> llvm_name_vec = parseString(func_param_llvm_names);
-
+        int jump_to_next_param = -1;
+        int once_bpatch = -1;
+        
         auto it = llvm_name_vec.begin(), types_it = types_vec.begin();
-        auto true_it = truelist_vec.begin(), false_it = falselist_vec.begin();
-        for (; it < llvm_name_vec.end(); it++, types_it++, true_it++, false_it++)
+        
+        int last_command_to_end = cbf.emit("br label @");
+        if(notLastBool(types_it, types_vec.end()))
         {
+          once_bpatch = cbf.emit("br label @");
+        }
+        //auto labels_it = labels_vec.begin();
+        auto true_it = truelist_vec.begin(), false_it = falselist_vec.begin();
+        for (; it < llvm_name_vec.end(); it++, /*labels_it++,*/ types_it++, true_it++, false_it++)
+        {
+          if(jump_to_next_param != -1)
+          {
+            //cbf.bpatch(cbf.makelist({jump_to_next_param, FIRST}), *(labels_it));
+            jump_to_next_param = -1;
+          }
           if((*types_it) == "STRING")
           {
             call_str += "i8* " + *it;
@@ -294,6 +315,25 @@ string funcCall(string func_ret_type,
           else if((*types_it) == "BOOL")
           {
             string var = rgs.freshVar();
+            string true_label = cbf.genLabel();
+            if(once_bpatch != -1)
+            {
+              cbf.bpatch(cbf.makelist({once_bpatch, FIRST}), true_label);
+              once_bpatch = -1;
+            }
+
+            int true_line = cbf.emit("br label @");
+            string false_label = cbf.genLabel();
+            int false_line = cbf.emit("br label @");
+            string next_label = cbf.genLabel();
+
+            cbf.emit(var + " = phi i32 [1, %" + true_label +"], [0, %" + false_label +"]");
+            cbf.bpatch((*true_it), true_label);
+            cbf.bpatch((*false_it), false_label);
+
+            cbf.bpatch(cbf.makelist({true_line, FIRST}), next_label);
+            cbf.bpatch(cbf.makelist({false_line, FIRST}), next_label);
+            
             call_str += "i32 " + var;
           }
           else
@@ -301,9 +341,23 @@ string funcCall(string func_ret_type,
              call_str += "i32 " + *it;
           }
           if(it + 1 != llvm_name_vec.end())
+          {
               call_str += ", ";
+          }
+          
+          if(it + 1 == llvm_name_vec.end())
+          {
+            int end_line = cbf.emit("br label @");
+            string end_label = cbf.genLabel();
+            cbf.bpatch(cbf.merge(cbf.makelist({end_line, FIRST}), cbf.makelist({last_command_to_end, FIRST})), end_label);
+          }  
+
+
         }
         call_str += ")";
         return call_str;
 }
+
+
+
 #endif

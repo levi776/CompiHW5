@@ -1,4 +1,4 @@
-void printByValue(bool val) {
+override void printByValue(bool val) {
 	if (val)
 		print("val is true");
 	else {
@@ -6,10 +6,22 @@ void printByValue(bool val) {
 	}
 }
 
-void main() {
+override void printByValue(int val) {
+	if (val<5)
+		print("val is true");
+	else {
+		print("val is false");
+	}
+}
 
-	printByValue(1 == 1);
-	printByValue(false);
+
+void main() {
+	bool x = true;
+	int y = 5;
+	printByValue(y);
+
+	printByValue(x);
+	printByValue(not x);
 
 	if(true)
     {

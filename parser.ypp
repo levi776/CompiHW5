@@ -294,7 +294,6 @@ Call
         //todo understand
         _stack.validateCall(string($1.name), string($3.type), yylineno);
         
-        
         $$.name = $1.name; 
         $$.type = _stack.getFuncReturnType(string($1.name),string($3.type)).data();
         $$.llvm_name = _stack.getFunctionLlvmName(string($1.name), string($3.type));
@@ -303,10 +302,11 @@ Call
                       /*function parameter llvm_names*/string($3.llvm_name),
                       /*truelist_list*/$3.trueListList,
                       /*falselist_list*/$3.falseListList,
-                      string($$.llvm_name));
+                      string($$.llvm_name)
+                      
+                      );
         //cbf.emit($$.label);
         $$.is_func = true;
-
     }
     | ID LPAREN RPAREN 
     { 
