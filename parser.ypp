@@ -80,199 +80,214 @@
 
 %%
 Program
-    : {initDeclarations();}
+    : {initDeclarations();
+    }
     Funcs {
+        $$ = new token_att();
         if (yychar == YYEOF) {
             _stack.validateMainFunction(yylineno);
             _stack.pop_scope();
             printGlobalAndCodeBuffer();
-        }    
+        }   
     }
     ;
 
 Funcs
-    : FuncDecl Funcs {/*empty*/}
+    : FuncDecl Funcs {
+        $$ = new token_att();
+
+        /*empty*/}
     |/*epsilon*/ {/*empty*/}
     ;
 
 FuncDecl
     : OverRide RetType ID LPAREN Formals
-    { 
-        string llvm_name = rgs.freshVar($3.name,true); 
-        _stack.insert($3.name, $5.type+"->"+$2.type,llvm_name, true, $1.intVal, yylineno);
-        declareFunction(/*is_override =*/ $1.intVal,
-                        /*func_name=*/ string($3.name),
-                        /*func_arguments_type_string=*/ string($5.type),
-                        /*func_arguments_type_string=*/ string($5.name),
+    {
+        string llvm_name = rgs.freshVar($3->name,true); 
+        _stack.insert($3->name, $5->type+"->"+$2->type,llvm_name, true, $1->intVal, yylineno);
+        declareFunction(/*is_override =*/ $1->intVal,
+                        /*func_name=*/ $3->name,
+                        /*func_arguments_type_string=*/ $5->type,
+                        /*func_arguments_type_string=*/ $5->name,
                         /*fresh_func_name*/ llvm_name,
-                        /*func_type*/ string($2.type)); 
+                        /*func_type*/ $2->type); 
     }
     RPAREN LBRACE 
-    {_stack.push_scope();_stack.symbol_table_add_function_parameter_entries(string($5.name), string($5.type), yylineno);} 
+    {_stack.push_scope();_stack.symbol_table_add_function_parameter_entries($5->name, $5->type, yylineno);} 
     Statements RBRACE 
     {
+        $$ = new token_att();
         _stack.pop_scope();
-        closeFunction(/*nextlist=*/$10.nextList, /*func_return_type=*/  string($2.type));
+        closeFunction(/*nextlist=*/$10->nextList, /*func_return_type=*/  $2->type);
     }
     ;
 OverRide
-    :/*epsilon*/ {$$.intVal = false;}
-    | OVERRIDE {$$.intVal = true;}
+    :/*epsilon*/ {$$ = new token_att();$$->intVal = false;}
+    | OVERRIDE {$$ = new token_att();$$->intVal = true;}
     ;
 
 RetType
-    : VOID { $$.type=$1.type; } 
-    | Type { $$.type=$1.type; }
+    : VOID { $$ = new token_att();$$->type=$1->type; } 
+    | Type { $$ = new token_att();$$->type=$1->type; }
     ;
 
 Formals
-    : /*epsilon*/ {$$.type = ""; $$.name = "";  }
-    |FormalsList {$$.type = $1.type; $$.name = $1.name;}
+    : /*epsilon*/ {$$ = new token_att();$$->type = ""; $$->name = "";  }
+    |FormalsList { $$ = new token_att();$$->type = $1->type; $$->name = $1->name;}
     ;
 
 FormalsList
-    : FormalDecl {$$.type = $1.type; $$.name = $1.name;}
-    | FormalDecl COMMA FormalsList {$$.type = $1.type +","+$3.type;
-                                    $$.name = $1.name +","+ $3.name;}
+    : FormalDecl {$$ = new token_att();$$->type = $1->type; $$->name = $1->name;}
+    | FormalDecl COMMA FormalsList {$$ = new token_att();$$->type = $1->type +","+$3->type;
+                                    $$->name = $1->name +","+ $3->name;}
     ;
 FormalDecl
-    : Type ID { $$.type = $1.type ; $$.name = $2.name; }
+    : Type ID { $$ = new token_att();$$->type = $1->type ; $$->name = $2->name; }
     ;
 
 Statements
     : Statement 
-    {
-        $$.nextList = $1.nextList;
-        $$.breakList = $1.breakList;
-        $$.contList = $1.contList;
+    {$$ = new token_att();
+        $$->nextList = $1->nextList;
+        $$->breakList = $1->breakList;
+        $$->contList = $1->contList;
         }
     | Statements 
-      { 
-        bpVector($1.nextList);
+      { $$ = new token_att();
+        bpVector($1->nextList);
       } 
      Statement 
         {
-        $$.nextList = $3.nextList; 
-        $$.breakList = cbf.merge($1.breakList, $3.breakList);
-        $$.contList = cbf.merge($1.contList, $3.contList);
+        $$->nextList = $3->nextList; 
+        $$->breakList = cbf.merge($1->breakList, $3->breakList);
+        $$->contList = cbf.merge($1->contList, $3->contList);
         }
     ;
 Statement 
     : LBRACE {_stack.push_scope();} Statements RBRACE 
     {
+        $$ = new token_att();
         _stack.pop_scope();
-        $$.nextList = $3.nextList;
-        $$.breakList = $3.breakList;
-        $$.contList = $3.contList;
+        $$->nextList = $3->nextList;
+        $$->breakList = $3->breakList;
+        $$->contList = $3->contList;
     }
-    | Type ID SC { 
-        string llvm_name = rgs.freshVar(string($2.name),false);
-        $$.llvm_name = llvm_name;
-        $$.name = $2.name;
-        _stack.insert($2.name , $1.type, llvm_name, false, false, yylineno);
-        $2.type=$1.type;
-        cbf.bpatch($$.jumpList, $$.startLabel);
-        varDefintionGenerate(/*varType*/string($1.type),/*var_name*/llvm_name); 
+    | Type ID SC {$$ = new token_att(); 
+        string llvm_name = rgs.freshVar(string($2->name),false);
+        $$->llvm_name = llvm_name;
+        $$->name = $2->name;
+        _stack.insert($2->name , $1->type, llvm_name, false, false, yylineno);
+        $2->type=$1->type;
+        varDefintionGenerate(/*varType*/string($1->type),/*var_name*/llvm_name); 
         }
     | Type ID ASSIGN Exp SC 
-    {
-        if(typesDontMatch($1.type, $4.type)) 
+    {   
+        $$ = new token_att();
+        if(typesDontMatch($1->type, $4->type)) 
         {
             errorMismatch(yylineno);
         }
-        $$.llvm_name = rgs.freshVar(string($2.name),false);
-        $$.name = $2.name;
-        $2.type=$1.type; _stack.insert($2.name , $2.type, $$.llvm_name, false, false, yylineno);     
+        $$->llvm_name = rgs.freshVar(string($2->name),false);
+        $$->name = $2->name;
+        $2->type=$1->type; _stack.insert($2->name , $2->type, $$->llvm_name, false, false, yylineno);     
         
-        string exp_llvm_name = $4.llvm_name;
-            if($4.is_func)
+        string exp_llvm_name = $4->llvm_name;
+            if($4->is_func)
             {
                exp_llvm_name = rgs.freshVar();
-               cbf.emit(exp_llvm_name + " = " + $4.label);
+               cbf.emit(exp_llvm_name + " = " + $4->label);
            }
-        varDefintionAndAssignmentGenerate(/*llvm_var*/$$.llvm_name,
+        varDefintionAndAssignmentGenerate(/*llvm_var*/$$->llvm_name,
                              /*number value*/exp_llvm_name,
-                             /*exp_type*/string($4.type),   
-                             /*exp_true_list*/$4.trueList,
-                             /*exp_false_list*/$4.falseList,
+                             /*exp_type*/string($4->type),   
+                             /*exp_true_list*/$4->trueList,
+                             /*exp_false_list*/$4->falseList,
                              true);   
     }
     | ID ASSIGN {
-        if(!_stack.nameExists($1.name) || _stack.isFunc($1.name)) errorUndef(yylineno, $1.name);
-        $$.name = $1.name;
+        if(!_stack.nameExists($1->name) || _stack.isFunc($1->name)) errorUndef(yylineno, $1->name);
         } 
         Exp SC { 
-            if(typesDontMatch(_stack.getType($1.name).data(), $4.type)) errorMismatch(yylineno);
-            string llvm_name = _stack.getLlvmName(string($1.name));
-           resolve_jump_next_line(string($4.startLabel),$4.jumpList);
-            string exp_llvm_name = $4.llvm_name;
-            if($3.is_func)
+            $$ = new token_att();
+            $$->name = $1->name;
+            if(typesDontMatch(_stack.getType($1->name), $4->type)) errorMismatch(yylineno);
+            string llvm_name = _stack.getLlvmName(string($1->name));
+            string exp_llvm_name = $4->llvm_name;
+            if($4->is_func)
             {
                exp_llvm_name = rgs.freshVar();
-               cbf.emit(exp_llvm_name + " = " + $3.label);
+               cbf.emit(exp_llvm_name + " = " + $4->label);
            }
             
             varDefintionAndAssignmentGenerate(/*llvm_var*/llvm_name,
                                 /*number value*/exp_llvm_name,
-                                /*exp_type*/string($4.type),   
-                                /*exp_true_list*/$4.trueList,
-                                /*exp_false_list*/$4.falseList,
+                                /*exp_type*/string($4->type),   
+                                /*exp_true_list*/$4->trueList,
+                                /*exp_false_list*/$4->falseList,
                                 false);//,
-                               // /*exp_is_func*///$3.is_func);
+                               // /*exp_is_func*///$3->is_func);
         }
     | Call SC {
-
-      $$.type = $1.type;
-      $$.llvm_name = rgs.freshVar();
+        $$ = new token_att();
+      $$->label = $1->label;
+      $$->type = $1->type;
+      $$->llvm_name = rgs.freshVar();
       //TODO: refference
       
-      //resolve_jump_next_line(string($1.startLabel),$1.jumpList);
-     cbf.emit($1.label);
+      //resolve_jump_next_line(string($1->startLabel),$1->jumpList);
+     cbf.emit($1->label);
        }
-    | RETURN SC { 
+    | RETURN SC { $$ = new token_att();
         if(!isVoid()||_stack.getCurrentfunctionreturnType()!="VOID") errorMismatch(yylineno); 
         cbf.emit("ret void");
         }
-    | RETURN Exp SC {
-        if(isVoid()||!_stack.is_desired_return_type(string($2.type),_stack.getCurrentfunctionreturnType(),false)) errorMismatch(yylineno);
-        if($2.type== "BOOL")
+    | RETURN Exp SC {$$ = new token_att();
+        if(isVoid()||!_stack.is_desired_return_type(string($2->type),_stack.getCurrentfunctionreturnType(),false)) errorMismatch(yylineno);
+        if($2->type== "BOOL")
         {
-            $2.llvm_name = rgs.freshVar();
-            emitBool($2.llvm_name, $2.trueList, $2.falseList);
-    
+            $2->llvm_name = rgs.freshVar("bool_var");
+            emitBool($2->llvm_name, $2->trueList, $2->falseList);
         }
-        cbf.emit("ret i32 " + $2.llvm_name);
+        string return_reg = $2->llvm_name;
+        if($2->is_func)
+        {
+            return_reg = rgs.freshVar("return_reg");
+            cbf.emit(return_reg+ " = "+ $2->label);
+        }
+        cbf.emit("ret i32 " + return_reg);
         }
     | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN M1 Statement NEXT POP_SCOPE_MARKER
-    {      
+    {
+        $$ = new token_att();      
         //S → if (B) M S1
         //NEXT HERE WILL PRODUCE REDUDANT JUMP
-        //bpVector($4.trueList,$6.label); //from lecture, need to check if this is true...
-        //$4.trueList = cbf.merge($4.trueList, $6.trueList);
-        bpVector($4.trueList,$6.label);        
-        $$.nextList = cbf.merge($4.falseList, $7.nextList);
-        $$.nextList = cbf.merge($$.nextList, $8.nextList);
-        $$.breakList = $7.breakList; //why do we need this here?
-        $$.contList = $7.contList; //the same, why do we need this here? 
+        //bpVector($4->trueList,$6->label); //from lecture, need to check if this is true...
+        //$4->trueList = cbf.merge($4->trueList, $6->trueList);
+        bpVector($4->trueList,$6->label);        
+        auto temp = cbf.merge($4->falseList, $7->nextList);
+        $$->nextList = cbf.merge(temp, $8->nextList);
+        $$->breakList = $7->breakList; //why do we need this here?
+        $$->contList = $7->contList; //the same, why do we need this here? 
         }
     | IF NEW_SCOPE_MARKER LPAREN CHECK_TYPE_MARKER RPAREN M1 Statement NEXT POP_SCOPE_MARKER ELSE 
     {
         _stack.push_scope();
 
     }   M2 Statement 
-    {
-        //$4.trueList = cbf.merge($4.trueList, $6.trueList);
-        //$4.falseList = cbf.merge($4.falseList, $12.falseList);
-        bpVector($4.trueList,$6.label);
-        bpVector($4.falseList,$12.label);
+    {            
+        $$ = new token_att();
+        //$4->trueList = cbf.merge($4->trueList, $6->trueList);
+        //$4->falseList = cbf.merge($4->falseList, $12->falseList);
+        bpVector($4->trueList,$6->label);
+        bpVector($4->falseList,$12->label);
         _stack.pop_scope();
-        auto temp = cbf.merge($7.nextList,$8.nextList);
+        auto temp = cbf.merge($7->nextList,$8->nextList);
         int line = cbf.emit("br label @");
         auto next_line_for_else = cbf.makelist({line,FIRST});
-        $$.nextList = cbf.merge(temp, $13.nextList);
-        $$.nextList = cbf.merge ($$.nextList, next_line_for_else);
-        $$.breakList = cbf.merge($7.breakList, $13.breakList);
-        $$.contList = cbf.merge($7.contList, $13.contList);
+        auto temp2 =  cbf.merge(temp, $13->nextList);
+        $$->nextList = cbf.merge (temp2, next_line_for_else);
+        $$->breakList = cbf.merge($7->breakList, $13->breakList);
+        $$->contList = cbf.merge($7->contList, $13->contList);
     }   
     
     
@@ -282,412 +297,432 @@ Statement
     } 
     LPAREN Exp 
     { 
-        if(notBool($5.type)) errorMismatch(yylineno);
+        if(notBool($5->type)) errorMismatch(yylineno);
     } 
     RPAREN M2 Statement 
-    {
+    {            
+
         _stack.updateInWhile(false);
         _stack.pop_scope();
-        bpVector($9.nextList, $2.label);
-        bpVector($9.contList, $2.label);
-        bpVector($5.trueList, $8.label);
-        $$.nextList = cbf.merge($5.falseList, $9.breakList);
-        cbf.emit("br label %" + $2.label);
+        $$ = new token_att();
+        bpVector($9->nextList, $2->label);
+        bpVector($9->contList, $2->label);
+        bpVector($5->trueList, $8->label);
+        $$->nextList = cbf.merge($5->falseList, $9->breakList);
+        cbf.emit("br label %" + $2->label);
     }
     | BREAK SC 
-    { 
+    {             
         if(!_stack.inWhileLoop()) errorUnexpectedBreak(yylineno);
+        $$ = new token_att();
         int line = cbf.emit("br label @");
-        $$.breakList = cbf.makelist({line, FIRST});
+        $$->breakList = cbf.makelist({line, FIRST});
     }
-    | CONTINUE SC { 
+    | CONTINUE SC {             
+        
+
         if(!_stack.inWhileLoop()) errorUnexpectedContinue(yylineno);
+        $$ = new token_att();
         int line = cbf.emit("br label @");
-        $$.contList = cbf.makelist({line, FIRST});
+        $$->contList = cbf.makelist({line, FIRST});
         }
     ;
 Call
-    : ID LPAREN ExpList RPAREN { 
-        //todo understand
-        _stack.validateCall(string($1.name), string($3.type), yylineno);
-        
-        $$.name = $1.name;
-        string expList_type = string($3.type); 
-        //std::cout << "ExpList type: " << expList_type  << std::endl;
-        //std::cout << "dollar3 type: " << string($3.type)  << std::endl;
+    : ID LPAREN ExpList RPAREN {            
 
-        $$.type = _stack.getFuncReturnType(string($1.name),expList_type).data();
+    
+        $$ = new token_att();
+
+        //todo understand
+        _stack.validateCall(string($1->name), string($3->type), yylineno);
+        $$->name = $1->name;
+        string expList_type = string($3->type); 
+        //std::cout << "ExpList type: " << expList_type  << std::endl;
+        //std::cout << "dollar3 type: " << string($3->type)  << std::endl;
+
+        $$->type = _stack.getFuncReturnType(string($1->name),expList_type);
         //std::cout << "ExpList type: " << expList_type << std::endl;
-       // std::cout << "dollar3 type: " << string($3.type)  << std::endl;
-        $$.llvm_name = _stack.getFunctionLlvmName(string($1.name), expList_type);
-        $$.label = funcCall(/*function return type*/string($$.type),
-                      /*function parameter types*/string($3.type),
-                      /*function parameter llvm_names*/string($3.llvm_name),
-                      /*truelist_list*/$3.trueListList,
-                      /*falselist_list*/$3.falseListList,
-                      string($$.llvm_name)
+        //std::cout << "$3 type: " << string($3->llvm_name)  << std::endl;
+        $$->llvm_name = _stack.getFunctionLlvmName(string($1->name), expList_type);
+        $$->label = funcCall(/*function return type*/string($$->type),
+                      /*function parameter types*/string($3->type),
+                      /*function parameter llvm_names*/string($3->llvm_name),
+                      /*truelist_list*/$3->trueListList,
+                      /*falselist_list*/$3->falseListList,
+                      string($$->llvm_name)
                       
                       );
-        //cbf.emit($$.label);
-        $$.is_func = true;
+        //cbf.emit($$->label);
+        $$->is_func = true;
+        
+
     }
     | ID LPAREN RPAREN 
     { 
         //todo understand
-        _stack.validateCall(string($1.name), "",yylineno);
-        $$.name = $1.name; 
-        $$.type = _stack.getFuncReturnType($1.name,"").data();       
-        string str_name(_stack.getFunctionLlvmName(string($1.name),""));
-        string call_str = "call " + convertToLLVMType(string($$.type))  +" "+str_name + "()";
-        $$.label = call_str;
-        $$.is_func = true;
-        
+                    $$ = new token_att();
+
+        _stack.validateCall(string($1->name), "",yylineno);
+        $$->name = $1->name;
+        //cbf.emit("ID LPAREN RPAREN");
+        $$->type = _stack.getFuncReturnType($1->name,"");       
+        string str_name = _stack.getFunctionLlvmName(string($1->name),"");
+        string call_str = "call " + convertToLLVMType(string($$->type))+" "+str_name + "()";
+        $$->label = string(call_str);
+        $$->is_func = true;
+
     }
     ;
 NEW_SCOPE_MARKER 
-    : /*epsilon*/{_stack.push_scope();}
+    : /*epsilon*/{$$ = new token_att();_stack.push_scope();}
     ;
 POP_SCOPE_MARKER
     : /*epsilon*/ 
     {
+        $$ = new token_att();
         //todo understand
-        
         _stack.pop_scope();
     }
     ;
 CHECK_TYPE_MARKER
     : Exp {
-        if(notBool($1.type)) errorMismatch(yylineno);
-        $$.falseList = $1.falseList;
-        $$.trueList = $1.trueList;
+        
+        if(notBool($1->type)) errorMismatch(yylineno);
+        $$ = new token_att();
+        $$->falseList = $1->falseList;
+        $$->trueList = $1->trueList;
+        
         }
     ;
 M1:
-    /*epsilon*/ {
+    /*epsilon*/ {$$ = new token_att();
         //int line = cbf.emit("br label @");
-        $$.label = cbf.genLabel();
-        //$$.trueList = cbf.makelist({line,FIRST});
+        $$->label = cbf.genLabel();
+        //$$->trueList = cbf.makelist({line,FIRST});
     } ;
 M2:
-    /*epsilon*/ {
+    /*epsilon*/ {$$ = new token_att();
      //  int line = cbf.emit("br label @");
-       $$.label = cbf.genLabel();
-//$$.falseList = cbf.makelist({line,FIRST});
+       $$->label = cbf.genLabel();
+//$$->falseList = cbf.makelist({line,FIRST});
     } ;
 NEXT
-:  /*epsilon*/ {
+:  /*epsilon*/ {$$ = new token_att();
         int line = cbf.emit("br label @");
-        $$.nextList = cbf.makelist({line,FIRST});
+        $$->nextList = cbf.makelist({line,FIRST});
     };
 M3:
    //SAME M FOR WHILE
     {
+        $$ = new token_att();
         int line = cbf.emit("br label @");
-        $$.label = cbf.genLabel();
-        cbf.bpatch(cbf.makelist({line,FIRST}),$$.label);
+        $$->label = cbf.genLabel();
+        cbf.bpatch(cbf.makelist({line,FIRST}),$$->label);
     };
 ExpList
     : Exp 
     { 
-    $$.type = $1.type;
-    string reg = $1.llvm_name;
-    if($1.is_func)
+    $$ = new token_att();
+    $$->type = $1->type;
+    string reg = $1->llvm_name;
+    if($1->is_func)
     {
-        reg = rgs.freshVar();
-        cbf.emit(reg + " = " + $1.label);
-        $$.llvm_name = reg; //LEVI CHANGE BROH
-    }
-    
+        reg = rgs.freshVar("func_reg");
+        cbf.emit(reg + " = " + $1->label);
+        $$->llvm_name = reg; //LEVI CHANGE BROH
+    } 
     //TODO: understand
-
-    ($$.trueListList).push_back($1.trueList); 
-    ($$.falseListList).push_back($1.falseList);
+    $$->llvm_name = reg ;
+    ($$->trueListList).push_back($1->trueList); 
+    ($$->falseListList).push_back($1->falseList);
     }
     | Exp COMMA ExpList 
     {
+        $$ = new token_att();
         //TODO: ADD and Understand
-        $$.type = $1.type+ ","+$3.type;
-        
-        string reg = $1.llvm_name;
-        if($1.is_func)
+        $$->type = $1->type+ "," + $3->type;
+        string reg = $1->llvm_name;
+        if($1->is_func)
         {
-            reg = rgs.freshVar();
-            cbf.emit(reg + " = " + $1.label);
-            $1.llvm_name = reg; //LEVI CHANGE BROH
+            reg = rgs.freshVar("exp_list_func_reg");
+            cbf.emit(reg + " = " + $1->label);
+            $1->llvm_name = reg; //LEVI CHANGE BROH
         }
-
-        $$.llvm_name = $1.llvm_name + "," + $3.llvm_name;
-        ($3.trueListList).insert(($3.trueListList).begin(), $1.trueList);
-        $$.trueListList = $3.trueListList;
-        ($3.falseListList).insert(($3.falseListList).begin(), $1.falseList);
-        $$.falseListList = $3.falseListList;
+        $$->llvm_name = $1->llvm_name + "," + $3->llvm_name;
+        ($3->trueListList).insert(($3->trueListList).begin(), $1->trueList);
+        $$->trueListList = $3->trueListList;
+        ($3->falseListList).insert(($3->falseListList).begin(), $1->falseList);
+        $$->falseListList = $3->falseListList;
     }
     ;
 
 Type
-    : INT { $$.type = $1.type; }
-    | BYTE { $$.type = $1.type; }
-    | BOOL { $$.type = $1.type; }
+    : INT {$$ = new token_att(); $$->type = $1->type; }
+    | BYTE {$$ = new token_att(); $$->type = $1->type; }
+    | BOOL {$$ = new token_att(); $$->type = $1->type; }
     ;
 Exp
-    : LPAREN Exp RPAREN {
-        $$.falseList = $2.falseList;
-        $$.llvm_name = $2.llvm_name;
-        $$.trueList = $2.trueList;
-        $$.type = $2.type;
-        $$.is_func = $2.is_func;
+    : LPAREN Exp RPAREN {$$ = new token_att();
+        $$->falseList = $2->falseList;
+        $$->llvm_name = $2->llvm_name;
+        $$->trueList = $2->trueList;
+        $$->type = $2->type;
+        $$->is_func = $2->is_func;
         }
-    | Exp MD_BINOP Exp %prec MD_BINOP {
-         if(notIntOrByte($1.type,$3.type)) errorMismatch(yylineno); $$.type = biggerType($1.type, $3.type);
+    | Exp MD_BINOP Exp %prec MD_BINOP {$$ = new token_att();
+         if(notIntOrByte($1->type,$3->type)) errorMismatch(yylineno); $$->type = biggerType($1->type, $3->type);
          //TODO : understand
-            $$.llvm_name = rgs.freshVar();
-            validateBinop(string($2.name), $3.llvm_name);
+            $$->llvm_name = rgs.freshVar("md_binop_reg");
+            validateBinop(string($2->name), $3->llvm_name);
             
-            string reg1 = $1.llvm_name;
-            string reg2 = $3.llvm_name;
-            if($1.is_func)
+            string reg1 = $1->llvm_name;
+            string reg2 = $3->llvm_name;
+            if($1->is_func)
             {
-                reg1 = rgs.freshVar();
-                cbf.emit(reg1 + " = " + $1.label);
+                reg1 = rgs.freshVar("first_exp_md_binop_reg");
+                cbf.emit(reg1 + " = " + $1->label);
             }
-            if($3.is_func)
+            if($3->is_func)
             {
                 reg2 = rgs.freshVar();
-                cbf.emit(reg2 + " = " + $3.label);
+                cbf.emit(reg2 + " = " + $3->label);
             }
-            cbf.emit($$.llvm_name + " = " + opcode_to_cmd(string($2.name), string($$.type)) + " i32 " + reg1 + ", " + reg2);
-            if($$.type=="BYTE")
+            cbf.emit($$->llvm_name + " = " + opcode_to_cmd(string($2->name), string($$->type)) + " i32 " + reg1 + ", " + reg2);
+            if($$->type=="BYTE")
             {
-                string new_var = rgs.freshVar();
-                cbf.emit(new_var + " = and i32 "+ $$.llvm_name +", 255");
-                $$.llvm_name = new_var;
+                string new_var = rgs.freshVar("second_exp_md_binop_reg");
+                cbf.emit(new_var + " = and i32 "+ $$->llvm_name +", 255");
+                $$->llvm_name = new_var;
             }
             
           }
-    | Exp PM_BINOP Exp %prec PM_BINOP {
-         if(notIntOrByte($1.type,$3.type)) errorMismatch(yylineno); $$.type = biggerType($1.type, $3.type);
-            $$.llvm_name = rgs.freshVar();
-            $$.type = biggerType($1.type, $3.type);
+    | Exp PM_BINOP Exp %prec PM_BINOP {$$ = new token_att();
+         if(notIntOrByte($1->type,$3->type)) errorMismatch(yylineno); $$->type = biggerType($1->type, $3->type);
+            $$->llvm_name = rgs.freshVar("pm_binop_reg");
+            $$->type = biggerType($1->type, $3->type);
             
 
-            string reg1 = $1.llvm_name;
-            string reg2 = $3.llvm_name;
-            if($1.is_func)
+            string reg1 = $1->llvm_name;
+            string reg2 = $3->llvm_name;
+            if($1->is_func)
             {
-                reg1 = rgs.freshVar();
-                cbf.emit(reg1 + " = " + $1.label);
+                reg1 = rgs.freshVar("frst_exp_md_binop_reg");
+                cbf.emit(reg1 + " = " + $1->label);
             }
-            if($3.is_func)
+            if($3->is_func)
             {
-                reg2 = rgs.freshVar();
-                cbf.emit(reg2 + " = " + $3.label);
+                reg2 = rgs.freshVar("scnd_exp_md_binop_reg");
+                cbf.emit(reg2 + " = " + $3->label);
             }            
-            cbf.emit($$.llvm_name + " = " + opcode_to_cmd(string($2.name), string($$.type)) + " i32 " + reg1 + ", " + reg2);
+            cbf.emit($$->llvm_name + " = " + opcode_to_cmd(string($2->name), string($$->type)) + " i32 " + reg1 + ", " + reg2);
             
             
             
-            if($$.type=="BYTE")
+            if($$->type=="BYTE")
             {
-                string new_reg = rgs.freshVar();
-                cbf.emit(new_reg + " = and i32 "+ $$.llvm_name +", 255");
-                $$.llvm_name = new_reg;
+                string new_reg = rgs.freshVar("byte_conv_reg");
+                cbf.emit(new_reg + " = and i32 "+ $$->llvm_name +", 255");
+                $$->llvm_name = new_reg;
             }
         }
-    | ID {
-        _stack.validateId(string($1.name),yylineno); 
-        $$.type = _stack.getType(string($1.name)).data();
-        string curr_llvm_name = _stack.getLlvmName(string($1.name));
-        $$.is_func = false;
-        $$.llvm_name = rgs.freshVar();
-        cbf.emit($$.llvm_name + " = load i32, i32* " + curr_llvm_name );
+    | ID {$$ = new token_att();
+        _stack.validateId(string($1->name),yylineno); 
+        $$->type = _stack.getType(string($1->name));
+        string curr_llvm_name = _stack.getLlvmName(string($1->name));
+        $$->is_func = false;
+        $$->llvm_name = rgs.freshVar("id_reg");
+        cbf.emit($$->llvm_name + " = load i32, i32* " + curr_llvm_name );
            //TODO: check if correct
-        if($$.type== "BOOL")
+        if($$->type== "BOOL")
             {
-                string compare_reg = rgs.freshVar();
-                cbf.emit(compare_reg + " = icmp eq i32 1, " + $$.llvm_name);
+                string compare_reg = rgs.freshVar("cmp_reg");
+                cbf.emit(compare_reg + " = icmp eq i32 1, " + $$->llvm_name);
                 int line = cbf.emit("br i1 " + compare_reg + ", label @, label @");
-                $$.trueList = cbf.makelist({line, FIRST});
-                $$.falseList = cbf.makelist({line, SECOND});
+                $$->trueList = cbf.makelist({line, FIRST});
+                $$->falseList = cbf.makelist({line, SECOND});
             }
         }
     | Call {
-        $$.type=$1.type; 
-        $$.name = $1.name; 
-        $$.type = $1.type;
-        $$.llvm_name = $1.llvm_name;
-        $$.is_func = true;
-        if($$.type == "BOOL")
+        $$ = new token_att();
+        $$->label = string($1->label);
+        $$->name = $1->name; 
+        $$->type = $1->type;
+        $$->llvm_name = $1->llvm_name;
+        $$->is_func = true;
+        if($$->type == "BOOL")
         {
-            string temp_reg = rgs.freshVar();//ziv change
-            string compare_reg = rgs.freshVar();
-            cbf.emit(temp_reg + " = " +$1.label);
+            string temp_reg = rgs.freshVar("bool_tmp_reg");//ziv change
+            string compare_reg = rgs.freshVar("bool_cmp_reg");
+            cbf.emit(temp_reg + " = " +$1->label);
             cbf.emit(compare_reg + " = icmp eq i32 1, " + temp_reg);//ziv change
             int line = cbf.emit("br i1 " + compare_reg + ", label @, label @");
-            $$.trueList = cbf.makelist({line, FIRST});
-            $$.falseList = cbf.makelist({line, SECOND});
+            $$->trueList = cbf.makelist({line, FIRST});
+            $$->falseList = cbf.makelist({line, SECOND});
         }
+
     }
-    | NUM { $$.type=$1.type; 
-        $$.type = $1.type;
-        $$.name = $1.name;
-        $$.llvm_name = to_string($$.intVal);
-        $$.is_func = false;
+    | NUM {
+        $$ = new token_att(); 
+        $$->type= $1->type; 
+        $$->type = $1->type;
+        $$->name = $1->name;
+        $$->llvm_name = $1->strVal;
+        $$->is_func = false;
         }
-    | NUM B {if(byteTooLarge($1.intVal)) {errorByteTooLarge(yylineno, $1.strVal);}
-          $$.name = $1.name;
-          $$.type= $2.type;
-          $$.llvm_name = to_string($$.intVal);
-          $$.is_func = false;
+    | NUM B {if(byteTooLarge($1->intVal)) {errorByteTooLarge(yylineno, $1->strVal);}
+          $$ = new token_att();
+          $$->name = $1->name;
+          $$->type= $2->type;
+          $$->llvm_name = $1->strVal;
+          $$->is_func = false;
           }
 
     | STRING 
-    { 
-        $$.type=$1.type;
+    {   $$ = new token_att();
+        $$->type=$1->type;
         string global_var = rgs.freshVar(".g_ig_", true);
-        $$.llvm_name = rgs.freshVar();
-        string str($1.strVal);
+        $$->llvm_name = rgs.freshVar("llvm_reg");
+        string str($1->strVal);
         str = str.substr(1, str.length() - 2);
-        $$.name = str.data();
-        $$.is_func = false;
-        int len = strlen($$.name.data()) + 1;
+        $$->name = str;
+        $$->is_func = false;
+        int len = strlen($$->name.data()) + 1;
         cbf.emitGlobal(global_var + " = constant [" + to_string(str.length() + 1) + " x i8] c\"" + str + "\\00\"");
-        cbf.emit($$.llvm_name + " = getelementptr ["+to_string(len)+" x i8], ["+to_string(len)+" x i8]* "+(global_var)+", i32 0, i32 0"); 
+        cbf.emit($$->llvm_name + " = getelementptr ["+to_string(len)+" x i8], ["+to_string(len)+" x i8]* "+(global_var)+", i32 0, i32 0"); 
     }
-    | TRUE { $$.type=$1.type;
-        $$.type = $1.type;
-        $$.llvm_name = string(VAR_EMPTY_STR);
-        $$.is_func = false;
+    | TRUE {
+        $$ = new token_att(); $$->type=$1->type;
+        $$->type = $1->type;
+        $$->llvm_name = string(VAR_EMPTY_STR);
+        $$->is_func = false;
         int line = cbf.emit("br label @");
-        $$.trueList = cbf.makelist({line,FIRST});
+        $$->trueList = cbf.makelist({line,FIRST});
         }
     | FALSE {
-        $$.type=$1.type;
-        $$.llvm_name = string(VAR_EMPTY_STR);
-        $$.is_func = false;
+        $$ = new token_att();
+        $$->type=$1->type;
+        $$->llvm_name = string(VAR_EMPTY_STR);
+        $$->is_func = false;
         int line = cbf.emit("br label @");
-        $$.falseList = cbf.makelist({line,FIRST});
-          }
-    | NOT Exp { if(notBool($2.type)) errorMismatch(yylineno); $$.type = $2.type;
-            $$.trueList = $2.falseList;
-            $$.falseList = $2.trueList;            
-            $$.llvm_name = string(VAR_EMPTY_STR);
-            $$.is_func = $2.is_func; 
+        $$->falseList = cbf.makelist({line,FIRST});
+        }
+    | NOT Exp { if(notBool($2->type)) errorMismatch(yylineno); 
+            $$ = new token_att();
+            $$->type = $2->type;
+            $$->trueList = $2->falseList;
+            $$->falseList = $2->trueList;            
+            $$->llvm_name = string(VAR_EMPTY_STR);
+            $$->is_func = $2->is_func; 
             }
     | Exp AND 
     {
-        if(notBool($1.type)) errorMismatch(yylineno);
+        if(notBool($1->type)) errorMismatch(yylineno);
     }
     M1 Exp 
-    { 
-        if(notBool($5.type)) errorMismatch(yylineno); 
-        $1.trueList = cbf.merge($1.trueList, $4.trueList);
+    { $$ = new token_att();
+        if(notBool($5->type)) errorMismatch(yylineno); 
+        $1->trueList = cbf.merge($1->trueList, $4->trueList);
 
-        bpVector($1.trueList, $4.label);
-        $$.type=$1.type; 
-        $$.llvm_name = VAR_EMPTY_STR;
-        $$.trueList = $5.trueList;
-        $$.falseList = cbf.merge($1.falseList, $5.falseList);
+        bpVector($1->trueList, $4->label);
+        $$->type=$1->type; 
+        $$->llvm_name = VAR_EMPTY_STR;
+        $$->trueList = $5->trueList;
+        $$->falseList = cbf.merge($1->falseList, $5->falseList);
         }
     | Exp OR 
     {
-        if(notBool($1.type)) errorMismatch(yylineno);
+        if(notBool($1->type)) errorMismatch(yylineno);
     } M1 Exp 
-    {   
-        if(notBool($5.type)) errorMismatch(yylineno);
-        $1.trueList = cbf.merge($1.trueList, $4.trueList);
-        bpVector($1.falseList,$4.label);
-        $$.type = $1.type; 
-        $$.falseList = $5.falseList;
-        $$.llvm_name = VAR_EMPTY_STR;
-        $$.trueList = cbf.merge($1.trueList, $5.trueList);
+    {    
+        if(notBool($5->type)) errorMismatch(yylineno);
+        $$ = new token_att(); 
+        $1->trueList = cbf.merge($1->trueList, $4->trueList);
+        bpVector($1->falseList,$4->label);
+        $$->type = $1->type; 
+        $$->falseList = $5->falseList;
+        $$->llvm_name = VAR_EMPTY_STR;
+        $$->trueList = cbf.merge($1->trueList, $5->trueList);
 
     }
-    | Exp EQ_RELOP Exp %prec EQ_RELOP { if(notIntOrByte($1.type,$3.type)) {errorMismatch(yylineno);} $$.type = "BOOL";
+    | Exp EQ_RELOP Exp %prec EQ_RELOP { if(notIntOrByte($1->type,$3->type)) {errorMismatch(yylineno);} 
+        $$ = new token_att();
+        $$->type = "BOOL";
         std::string branch_str = rgs.freshVar("branch");
         //need to put it inside functions
         string reg1;
         string reg2;
-        if ($1.is_func){
+        if ($1->is_func){
         //store func inside variable and return it...
-        reg1 = rgs.freshVar();
-        cbf.emit(reg1+" = "+$1.label);
+        reg1 = rgs.freshVar("func_reg_frst");
+        cbf.emit(reg1+" = "+$1->label);
         }
         else{
-        reg1 = $1.llvm_name;
+        reg1 = $1->llvm_name;
         }
-        if ($3.is_func){
-         reg2 = rgs.freshVar();
-        cbf.emit(reg2+" = "+$3.label);
+        if ($3->is_func){
+         reg2 = rgs.freshVar("func_reg_scnd");
+        cbf.emit(reg2+" = "+$3->label);
         }
         else{
-            reg2 = $3.llvm_name;
+            reg2 = $3->llvm_name;
         }
-        cbf.emit(branch_str + " = icmp " + opcode_to_cmd($2.name, $1.type) + " i32 " + reg1 + ", " + reg2);
+        cbf.emit(branch_str + " = icmp " + opcode_to_cmd($2->name, $1->type) + " i32 " + reg1 + ", " + reg2);
         int branch_location = cbf.emit("br i1 " + branch_str + ", label @, label @");
-        $$.trueList = cbf.makelist({branch_location, FIRST});
-        $$.falseList = cbf.makelist({branch_location, SECOND});
-        $$.llvm_name = string(VAR_EMPTY_STR);
-        $$.is_func = false; 
+        $$->trueList = cbf.makelist({branch_location, FIRST});
+        $$->falseList = cbf.makelist({branch_location, SECOND});
+        $$->llvm_name = string(VAR_EMPTY_STR);
+        $$->is_func = false; 
         }
-    | Exp RE_RELOP Exp %prec RE_RELOP { if(notIntOrByte($1.type,$3.type)) {errorMismatch(yylineno);} $$.type = "BOOL";
+    | Exp RE_RELOP Exp %prec RE_RELOP { if(notIntOrByte($1->type,$3->type)) {errorMismatch(yylineno);} 
+        $$ = new token_att();
+        $$->type = "BOOL";
         std::string branch_str = rgs.freshVar("branch");
         string reg1;
         string reg2;
-        if ($1.is_func){
+        if ($1->is_func){
         //store func inside variable and return it...
-        reg1 = rgs.freshVar();
-        cbf.emit(reg1+" = "+$1.label);
+        reg1 = rgs.freshVar("func_reg_frst");
+        cbf.emit(reg1+" = "+$1->label);
         }
         else{
-        reg1 = $1.llvm_name;
+        reg1 = $1->llvm_name;
         }
-        if ($3.is_func){
-         reg2 = rgs.freshVar();
-        cbf.emit(reg2+" = "+$3.label);
+        if ($3->is_func){
+         reg2 = rgs.freshVar("func_reg_scnd");
+        cbf.emit(reg2+" = "+$3->label);
         }
         else{
-            reg2 = $3.llvm_name;
+            reg2 = $3->llvm_name;
         }
-        cbf.emit(branch_str + " = icmp " + opcode_to_cmd($2.name, $1.type) + " i32 " + reg1 + ", " + reg2);
+        cbf.emit(branch_str + " = icmp " + opcode_to_cmd($2->name, $1->type) + " i32 " + reg1 + ", " + reg2);
         int branch_location = cbf.emit("br i1 " + branch_str + ", label @, label @");
-        $$.trueList = cbf.makelist({branch_location, FIRST});
-        $$.falseList = cbf.makelist({branch_location, SECOND});
-        $$.llvm_name = VAR_EMPTY_STR; 
+        $$->trueList = cbf.makelist({branch_location, FIRST});
+        $$->falseList = cbf.makelist({branch_location, SECOND});
+        $$->llvm_name = VAR_EMPTY_STR; 
         }
 
     | LPAREN Type RPAREN Exp {   
-        if(notIntOrByte($2.type,$4.type)) 
+        if(notIntOrByte($2->type,$4->type)) 
         {
             errorMismatch(yylineno);
         }
-        $$.type = $2.type;
-        $$.llvm_name = rgs.freshVar();
-        $$.name = $4.name;
-        if($4.is_func)
+        $$ = new token_att();
+        $$->type = $2->type;
+        $$->llvm_name = rgs.freshVar("llvm_reg");
+        $$->name = $4->name;
+        if($4->is_func)
         {
-            string reg = rgs.freshVar();
-            cbf.emit(reg + " = " + $4.label);
-            cbf.emit($$.llvm_name + " = and i32 "+ reg +", 255");
+            string reg = rgs.freshVar("func_reg");
+            cbf.emit(reg + " = " + $4->label);
+            cbf.emit($$->llvm_name + " = and i32 "+ reg +", 255");
         }
         else{
-            cbf.emit($$.llvm_name + " = and i32 "+ $4.llvm_name +", 255");
+            cbf.emit($$->llvm_name + " = and i32 "+ $4->llvm_name +", 255");
         }
         }
     ;
 
 %%
-/*char* join(char* s1, char* s2)
-{
-    
-    int str_len=strlen(s1)+strlen(s2);
-    char* joined_str = (char*)malloc(sizeof(char)*(str_len+1));
-    strcpy(joined_str,s1);
-    strcat(joined_str,s2);
-    
-    //not freeing memory, might be a problem atm.
-
-    return joined_str;
-}*/
 
 bool notBool(string type)
 {
@@ -731,7 +766,8 @@ bool isVoid()
 }
 string biggerType(string first, string second)
 {
-    return (second=="BYTE")? second : first;
+
+    return (second=="BYTE")? first : second;
 }
 
 int main()

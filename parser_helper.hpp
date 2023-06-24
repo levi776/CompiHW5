@@ -43,7 +43,7 @@ string evalBOOL()
   cbf.bpatch(cbf.makelist({true_line_to_next, FIRST}), next_label);
   cbf.bpatch(cbf.makelist({false_line_to_next, FIRST}), next_label);
 
-  string reg_phi = rgs.freshVar();
+  string reg_phi = rgs.freshVar("reg_phi_eval");
   cbf.emit(reg_phi + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
   return reg_phi;
 }
@@ -84,7 +84,7 @@ void declareFunction(bool is_override, string func_name, string func_arguments_t
         cnt ++;
     }
     
-    string LLVM_FUNC_DEFINITION = "define " +llvm_func_type+" " +fresh_func_name + " (" + arguments + " ) {"  ;
+    string LLVM_FUNC_DEFINITION = "define " +llvm_func_type+" " +fresh_func_name + "(" + arguments + " ) {"  ;
     cbf.emit(LLVM_FUNC_DEFINITION);
     for(string load_param_str : load_params)
     {
@@ -169,7 +169,7 @@ vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIn
           bpVector(false_list, next_label);
           bpVector(exp_true_list, true_label);
           bpVector(exp_false_list, false_label);
-          string reg_phi = rgs.freshVar();
+          string reg_phi = rgs.freshVar("reg_phi");
           cbf.emit(reg_phi + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
           reg_from = reg_phi;
         }
@@ -226,19 +226,11 @@ string opcode_to_cmd(string op, string type){
         return to_ret;
     }
 
-void resolve_jump_next_line(string startLabel,vector<pair<int,BranchLabelIndex>>& jump_list) //think about better name than token
-{
-    vector<string> labels_vec = parseString(startLabel);
-    if(labels_vec.size() > 0){
-    cbf.bpatch(jump_list, labels_vec.at(0));
-    }
-}
-
 void validateBinop(string operation, string second_operand)
 {
     if(operation == "/") //check if zero division
         {
-            string is_zero = rgs.freshVar();
+            string is_zero = rgs.freshVar("is_zero");
             cbf.emit(is_zero + " = icmp eq i32 " + second_operand +", 0");
             int jump_line = cbf.emit("br i1 " + is_zero + ", label @, label @");
             string zero_label = cbf.genLabel();
@@ -284,21 +276,18 @@ bool notLastBool(vector<string>::iterator it, vector<string>::iterator end){
 string funcCall(string func_ret_type,
               string func_param_types,
                 string func_param_llvm_names,
-                vector<vector<pair<int,BranchLabelIndex>>> truelist_vec,
-                vector<vector<pair<int,BranchLabelIndex>>> falselist_vec,
+                vector<vector<pair<int,BranchLabelIndex>>>& truelist_vec,
+                vector<vector<pair<int,BranchLabelIndex>>>& falselist_vec,
                 string func_name)//,
                 //string start_label)
 {
-    string call_str = "call " + convertToLLVMType(string(func_ret_type)) + " " + func_name + " (";
-    
-   // vector<string> labels_vec = parseString(start_label);
-    vector<string> types_vec = parseString(func_param_types);
-    vector<string> llvm_name_vec = parseString(func_param_llvm_names);
+        string call_str = "call " + convertToLLVMType(string(func_ret_type)) + " " + func_name + " (";
+        vector<string> types_vec = parseString(func_param_types);
+        vector<string> llvm_name_vec = parseString(func_param_llvm_names);
         int jump_to_next_param = -1;
         int once_bpatch = -1;
         
         auto it = llvm_name_vec.begin(), types_it = types_vec.begin();
-        
         int last_command_to_end = cbf.emit("br label @");
         if(notLastBool(types_it, types_vec.end()))
         {
@@ -306,41 +295,35 @@ string funcCall(string func_ret_type,
         }
         //auto labels_it = labels_vec.begin();
         auto true_it = truelist_vec.begin(), false_it = falselist_vec.begin();
-        for (; it < llvm_name_vec.end(); it++, /*labels_it++,*/ types_it++, true_it++, false_it++)
+        for (; it < llvm_name_vec.end(); it++, types_it++, true_it++, false_it++)
         {
-          //if(jump_to_next_param != -1)
-         // {
-            //cbf.bpatch(cbf.makelist({jump_to_next_param, FIRST}), *(labels_it));
-       //     jump_to_next_param = -1;
-         // }
+        //   if(jump_to_next_param != -1)
+        //  {
+        //     cbf.bpatch(cbf.makelist({jump_to_next_param, FIRST}), *(labels_it));
+        //    jump_to_next_param = -1;
+        //  }
           if((*types_it) == "STRING")
           {
             call_str += "i8* " + *it;
           }
           else if((*types_it) == "BOOL")
           {
-            string var = rgs.freshVar();
-            
-
+            string var = rgs.freshVar("var");
             jump_to_next_param = cbf.emit("br label @");
             string true_label = cbf.genLabel();
             cbf.bpatch(cbf.makelist({jump_to_next_param,FIRST}),true_label);
-            // cbf.emit("ZIV");
             if (once_bpatch != -1)
             {
               cbf.bpatch(cbf.makelist({once_bpatch, FIRST}), true_label);
               once_bpatch = -1;
             }
-
             int true_line = cbf.emit("br label @");
             string false_label = cbf.genLabel();
             int false_line = cbf.emit("br label @");
             string next_label = cbf.genLabel();
-
             cbf.emit(var + " = phi i32 [1, %" + true_label +"], [0, %" + false_label +"]");
             cbf.bpatch((*true_it), true_label);
             cbf.bpatch((*false_it), false_label);
-
             cbf.bpatch(cbf.makelist({true_line, FIRST}), next_label);
             cbf.bpatch(cbf.makelist({false_line, FIRST}), next_label);
             
@@ -357,17 +340,15 @@ string funcCall(string func_ret_type,
           
           if(it + 1 != llvm_name_vec.end())
           {
-              ;
-              // jump_to_next_param = cbf.emit("br label @");
+               //jump_to_next_param = cbf.emit("br label @");
           }
           else
           {
             int end_line = cbf.emit("br label @");
             string end_label = cbf.genLabel();
             cbf.bpatch(cbf.merge(cbf.makelist({end_line, FIRST}), cbf.makelist({last_command_to_end, FIRST})), end_label);
-          }  
-
-
+ 
+          }
         }
         call_str += ")";
         return call_str;

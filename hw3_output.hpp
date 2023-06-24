@@ -6,25 +6,25 @@
 #include "bp.hpp"
 using namespace std;
 
-typedef struct token_att {
-    int intVal;
-    string strVal;
-    string type;
-    string name;
-    string llvm_name; //var in nikita
-    vector<pair<int,BranchLabelIndex>> trueList;
-    vector<pair<int,BranchLabelIndex>> falseList;
-    vector<pair<int,BranchLabelIndex>> nextList;
-    vector<pair<int,BranchLabelIndex>> breakList;
-    vector<pair<int,BranchLabelIndex>> contList;
-    string startLabel;
-    vector<pair<int,BranchLabelIndex>> jumpList;
-     vector<vector<pair<int,BranchLabelIndex>>> trueListList;
-    vector<vector<pair<int,BranchLabelIndex>>> falseListList;
-    string label;
-    bool is_func;
-    } tokenAtt;
-#define YYSTYPE tokenAtt
+typedef struct tk_att {
+    public:
+        int intVal;
+        string strVal;
+        string type;
+        string name;
+        string llvm_name; //var in nikita
+        vector<pair<int,BranchLabelIndex>> trueList;
+        vector<pair<int,BranchLabelIndex>> falseList;
+        vector<pair<int,BranchLabelIndex>> nextList;
+        vector<pair<int,BranchLabelIndex>> breakList;
+        vector<pair<int,BranchLabelIndex>> contList;
+        vector<vector<pair<int,BranchLabelIndex>>> trueListList;
+        vector<vector<pair<int,BranchLabelIndex>>> falseListList;
+        string label;
+        bool is_func;
+    }token_att;
+
+#define YYSTYPE token_att*
 
 namespace output{
     void endScope();

@@ -8,10 +8,6 @@
 #include "tokens.hpp"
 #include "parser.tab.hpp"
 using namespace std;
-void add_name_att(char* name);
-void add_strVal_att(char* stVal);
-void add_intVal_att(int intVal);
-void add_type_att(char* type);
 
 
 %}
@@ -29,73 +25,42 @@ pm_binop                                        ([-+])
 relop                                           ([<>]=|>|<)
 eqop                                            ([=!]=)
 %%
-void                                                                                {add_type_att("VOID"); return VOID;}
-int                                                                                 {add_type_att("INT"); return INT;}
-byte                                                                                {add_type_att("BYTE"); return BYTE;}
-b                                                                                   {add_type_att("BYTE"); return B;}
-bool                                                                                {add_type_att("BOOL"); return BOOL;}
-override                                                                            {return OVERRIDE;}
-and                                                                                 return AND;
-or                                                                                  return OR;
-not                                                                                 return NOT;
-true                                                                                {add_type_att("BOOL"); return TRUE;}
-false                                                                               {add_type_att("BOOL"); return FALSE;}
-return                                                                              return RETURN;
-if                                                                                  return IF;
-else                                                                                return ELSE;
-while                                                                               return WHILE;
-break                                                                               return BREAK;
-continue                                                                            return CONTINUE;
-;                                                                                   return SC;
-,                                                                                   return COMMA;
-\(                                                                                  return LPAREN;
-\)                                                                                  return RPAREN;
-\{                                                                                  return LBRACE;
-\}                                                                                  return RBRACE;
-=                                                                                   return ASSIGN;
-{relop}                                                                             {add_name_att(yytext); return RE_RELOP;}
-{eqop}                                                                              {add_name_att(yytext); return EQ_RELOP;}
-{md_binop}                                                                          {add_name_att(yytext); return MD_BINOP;}
-{pm_binop}                                                                          {add_name_att(yytext); return PM_BINOP;}
-{id}                                                                                {add_name_att(yytext);return ID;}                                                                      
-{num}                                                                               {add_name_att(yytext);add_type_att("INT");add_intVal_att(atoi(yytext));add_strVal_att(yytext); return NUM;}    
-{string}                                                                            {add_type_att("STRING");add_strVal_att(yytext); return STRING;}
+void                                                                                {yylval=new token_att();yylval->type = string("VOID"); return VOID;}
+int                                                                                 {yylval=new token_att();yylval->type = string("INT"); return INT;}
+byte                                                                                {yylval=new token_att();yylval->type = string("BYTE"); return BYTE;}
+b                                                                                   {yylval=new token_att();yylval->type = string("BYTE"); return B;}
+bool                                                                                {yylval=new token_att();yylval->type = string("BOOL"); return BOOL;}
+override                                                                            {yylval=new token_att();return OVERRIDE;}
+and                                                                                 {yylval=new token_att();return AND;}
+or                                                                                  {yylval=new token_att();return OR;}
+not                                                                                 {yylval=new token_att();return NOT;}
+true                                                                                {yylval=new token_att();yylval->type = string("BOOL"); return TRUE;}
+false                                                                               {yylval=new token_att();yylval->type = string("BOOL"); return FALSE;}
+return                                                                              {yylval=new token_att();return RETURN;}
+if                                                                                  {yylval=new token_att();return IF;}
+else                                                                                {yylval=new token_att();return ELSE;}
+while                                                                               {yylval=new token_att();return WHILE;}
+break                                                                               {yylval=new token_att();return BREAK;}
+continue                                                                            {yylval=new token_att();return CONTINUE;}
+;                                                                                   {yylval=new token_att();return SC;}
+,                                                                                   {yylval=new token_att();return COMMA;}
+\(                                                                                 {yylval=new token_att();return LPAREN;}
+\)                                                                                  {yylval=new token_att();return RPAREN;}
+\{                                                                                  {yylval=new token_att();return LBRACE;}
+\}                                                                                  {yylval=new token_att();return RBRACE;}
+=                                                                                   {yylval=new token_att();return ASSIGN;}
+{relop}                                                                             {yylval=new token_att();yylval->name = string(yytext); return RE_RELOP;}
+{eqop}                                                                              {yylval=new token_att();yylval->name = string(yytext); return EQ_RELOP;}
+{md_binop}                                                                          {yylval=new token_att();yylval->name = string(yytext); return MD_BINOP;}
+{pm_binop}                                                                          {yylval=new token_att();yylval->name = string(yytext); return PM_BINOP;}
+{id}                                                                                {yylval=new token_att();yylval->name = string(yytext);return ID;}                                                                      
+{num}                                                                               {yylval=new token_att();yylval->name = string(yytext);yylval->type = string("INT");yylval->intVal = stoi(yytext); yylval->strVal = string(yytext); return NUM;}    
+{string}                                                                            {yylval=new token_att();yylval->type = "STRING";yylval->strVal = string(yytext); return STRING;}
 {whitespace}*                                                                       ;
 {comment}                                                                           ;
 .                                                                                   {output::errorLex(yylineno);exit(0);}
 %%
 
-void add_name_att(char* name)
-{
-    if(name != nullptr)
-    {
-        yylval.name = string(name);
-    }
-    else
-        yylval.name = nullptr;
-}
-void add_strVal_att(char* strVal)
-{
-    if(strVal != nullptr)
-    {
-        yylval.strVal = string(strVal);
-    }
-    else
-        yylval.strVal = nullptr;
-}
-void add_intVal_att(int intVal)
-{
-    yylval.intVal = intVal;
-}
-void add_type_att(char* type)
-{
-    if(type != nullptr)
-    {
-        yylval.type = string(type);
-    }
-    else
-        yylval.type = nullptr;
-}
 
 
 
