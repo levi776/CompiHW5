@@ -69,8 +69,7 @@ void add_name_att(char* name)
 {
     if(name != nullptr)
     {
-        yylval.name = (char*) malloc(sizeof(char)*(strlen(name)+1));
-        strcpy(yylval.name, name);
+        yylval.name = string(name);
     }
     else
         yylval.name = nullptr;
@@ -79,8 +78,7 @@ void add_strVal_att(char* strVal)
 {
     if(strVal != nullptr)
     {
-        yylval.strVal = (char*) malloc(sizeof(char)*(strlen(strVal)+1));
-        strcpy( yylval.strVal, strVal);
+        yylval.strVal = string(strVal);
     }
     else
         yylval.strVal = nullptr;
@@ -93,8 +91,7 @@ void add_type_att(char* type)
 {
     if(type != nullptr)
     {
-        yylval.type = (char*) malloc(sizeof(char)*(strlen(type)+1));
-        strcpy( yylval.type, type);
+        yylval.type = string(type);
     }
     else
         yylval.type = nullptr;

@@ -17,15 +17,15 @@
     using namespace output;
 
     symbol_tables_stack _stack = symbol_tables_stack();
-    bool notBool( char* type);
+    bool notBool( string type);
     bool byteTooLarge(int value);
-    bool typesDontMatch( char* LHS_type,  char* RHS_type);
-    bool notIntOrByte( char* converter_type,  char* converted_type);
-    bool can_type_be_compared(char* t1,char* t2);
+    bool typesDontMatch( string LHS_type,  string RHS_type);
+    bool notIntOrByte( string converter_type,  string converted_type);
+    bool can_type_be_compared(string t1,string t2);
     bool expList_not_valid(string func_name, string exp_list);
     bool isVoid();
-    char* biggerType(char* first, char* second);
-    char* join(char* s1,char* s2);
+    string biggerType(string first, string second);
+    string join(string s1,string s2);
 
 
 //TODO:ADD SOME OF THE FUNCTIONS BELOW
@@ -98,8 +98,8 @@ Funcs
 FuncDecl
     : OverRide RetType ID LPAREN Formals
     { 
-        string llvm_name = rgs.freshVar(string($3.name),true); 
-        _stack.insert(string($3.name), string(join(join($5.type ,"->"),$2.type)),llvm_name, true, $1.intVal, yylineno);
+        string llvm_name = rgs.freshVar($3.name,true); 
+        _stack.insert($3.name, $5.type+"->"+$2.type,llvm_name, true, $1.intVal, yylineno);
         declareFunction(/*is_override =*/ $1.intVal,
                         /*func_name=*/ string($3.name),
                         /*func_arguments_type_string=*/ string($5.type),
@@ -132,8 +132,8 @@ Formals
 
 FormalsList
     : FormalDecl {$$.type = $1.type; $$.name = $1.name;}
-    | FormalDecl COMMA FormalsList {$$.type = join(join($1.type ,","), $3.type);
-                                    $$.name = join(join($1.name ,",") , $3.name);}
+    | FormalDecl COMMA FormalsList {$$.type = $1.type +","+$3.type;
+                                    $$.name = $1.name +","+ $3.name;}
     ;
 FormalDecl
     : Type ID { $$.type = $1.type ; $$.name = $2.name; }
@@ -183,8 +183,15 @@ Statement
         $$.llvm_name = rgs.freshVar(string($2.name),false);
         $$.name = $2.name;
         $2.type=$1.type; _stack.insert($2.name , $2.type, $$.llvm_name, false, false, yylineno);     
+        
+        string exp_llvm_name = $4.llvm_name;
+            if($4.is_func)
+            {
+               exp_llvm_name = rgs.freshVar();
+               cbf.emit(exp_llvm_name + " = " + $4.label);
+           }
         varDefintionAndAssignmentGenerate(/*llvm_var*/$$.llvm_name,
-                             /*number value*/$4.llvm_name,
+                             /*number value*/exp_llvm_name,
                              /*exp_type*/string($4.type),   
                              /*exp_true_list*/$4.trueList,
                              /*exp_false_list*/$4.falseList,
@@ -197,13 +204,21 @@ Statement
         Exp SC { 
             if(typesDontMatch(_stack.getType($1.name).data(), $4.type)) errorMismatch(yylineno);
             string llvm_name = _stack.getLlvmName(string($1.name));
-           //resolve_jump_next_line(string($4.startLabel),$4.jumpList);
+           resolve_jump_next_line(string($4.startLabel),$4.jumpList);
+            string exp_llvm_name = $4.llvm_name;
+            if($3.is_func)
+            {
+               exp_llvm_name = rgs.freshVar();
+               cbf.emit(exp_llvm_name + " = " + $3.label);
+           }
+            
             varDefintionAndAssignmentGenerate(/*llvm_var*/llvm_name,
-                                /*number value*/$4.llvm_name,
+                                /*number value*/exp_llvm_name,
                                 /*exp_type*/string($4.type),   
                                 /*exp_true_list*/$4.trueList,
                                 /*exp_false_list*/$4.falseList,
-                                false);
+                                false);//,
+                               // /*exp_is_func*///$3.is_func);
         }
     | Call SC {
 
@@ -220,7 +235,7 @@ Statement
         }
     | RETURN Exp SC {
         if(isVoid()||!_stack.is_desired_return_type(string($2.type),_stack.getCurrentfunctionreturnType(),false)) errorMismatch(yylineno);
-        if(strcmp($2.type, "BOOL") == 0)
+        if($2.type== "BOOL")
         {
             $2.llvm_name = rgs.freshVar();
             emitBool($2.llvm_name, $2.trueList, $2.falseList);
@@ -233,6 +248,7 @@ Statement
         //S → if (B) M S1
         //NEXT HERE WILL PRODUCE REDUDANT JUMP
         //bpVector($4.trueList,$6.label); //from lecture, need to check if this is true...
+        //$4.trueList = cbf.merge($4.trueList, $6.trueList);
         bpVector($4.trueList,$6.label);        
         $$.nextList = cbf.merge($4.falseList, $7.nextList);
         $$.nextList = cbf.merge($$.nextList, $8.nextList);
@@ -245,7 +261,8 @@ Statement
 
     }   M2 Statement 
     {
-
+        //$4.trueList = cbf.merge($4.trueList, $6.trueList);
+        //$4.falseList = cbf.merge($4.falseList, $12.falseList);
         bpVector($4.trueList,$6.label);
         bpVector($4.falseList,$12.label);
         _stack.pop_scope();
@@ -294,9 +311,15 @@ Call
         //todo understand
         _stack.validateCall(string($1.name), string($3.type), yylineno);
         
-        $$.name = $1.name; 
-        $$.type = _stack.getFuncReturnType(string($1.name),string($3.type)).data();
-        $$.llvm_name = _stack.getFunctionLlvmName(string($1.name), string($3.type));
+        $$.name = $1.name;
+        string expList_type = string($3.type); 
+        //std::cout << "ExpList type: " << expList_type  << std::endl;
+        //std::cout << "dollar3 type: " << string($3.type)  << std::endl;
+
+        $$.type = _stack.getFuncReturnType(string($1.name),expList_type).data();
+        //std::cout << "ExpList type: " << expList_type << std::endl;
+       // std::cout << "dollar3 type: " << string($3.type)  << std::endl;
+        $$.llvm_name = _stack.getFunctionLlvmName(string($1.name), expList_type);
         $$.label = funcCall(/*function return type*/string($$.type),
                       /*function parameter types*/string($3.type),
                       /*function parameter llvm_names*/string($3.llvm_name),
@@ -341,11 +364,15 @@ CHECK_TYPE_MARKER
     ;
 M1:
     /*epsilon*/ {
+        //int line = cbf.emit("br label @");
         $$.label = cbf.genLabel();
+        //$$.trueList = cbf.makelist({line,FIRST});
     } ;
 M2:
     /*epsilon*/ {
+     //  int line = cbf.emit("br label @");
        $$.label = cbf.genLabel();
+//$$.falseList = cbf.makelist({line,FIRST});
     } ;
 NEXT
 :  /*epsilon*/ {
@@ -362,7 +389,15 @@ M3:
 ExpList
     : Exp 
     { 
-    $$.type = $1.type; 
+    $$.type = $1.type;
+    string reg = $1.llvm_name;
+    if($1.is_func)
+    {
+        reg = rgs.freshVar();
+        cbf.emit(reg + " = " + $1.label);
+        $$.llvm_name = reg; //LEVI CHANGE BROH
+    }
+    
     //TODO: understand
 
     ($$.trueListList).push_back($1.trueList); 
@@ -371,8 +406,15 @@ ExpList
     | Exp COMMA ExpList 
     {
         //TODO: ADD and Understand
-        $$.type = join(join($1.type, ","),$3.type);
+        $$.type = $1.type+ ","+$3.type;
         
+        string reg = $1.llvm_name;
+        if($1.is_func)
+        {
+            reg = rgs.freshVar();
+            cbf.emit(reg + " = " + $1.label);
+            $1.llvm_name = reg; //LEVI CHANGE BROH
+        }
 
         $$.llvm_name = $1.llvm_name + "," + $3.llvm_name;
         ($3.trueListList).insert(($3.trueListList).begin(), $1.trueList);
@@ -401,10 +443,20 @@ Exp
             $$.llvm_name = rgs.freshVar();
             validateBinop(string($2.name), $3.llvm_name);
             
-            $$.llvm_name = rgs.freshVar();
-            
-            cbf.emit($$.llvm_name + " = " + opcode_to_cmd($2.name, $$.type) + " i32 " + $1.llvm_name + ", " + $3.llvm_name);
-            if(strcmp($$.type, "BYTE") == 0)
+            string reg1 = $1.llvm_name;
+            string reg2 = $3.llvm_name;
+            if($1.is_func)
+            {
+                reg1 = rgs.freshVar();
+                cbf.emit(reg1 + " = " + $1.label);
+            }
+            if($3.is_func)
+            {
+                reg2 = rgs.freshVar();
+                cbf.emit(reg2 + " = " + $3.label);
+            }
+            cbf.emit($$.llvm_name + " = " + opcode_to_cmd(string($2.name), string($$.type)) + " i32 " + reg1 + ", " + reg2);
+            if($$.type=="BYTE")
             {
                 string new_var = rgs.freshVar();
                 cbf.emit(new_var + " = and i32 "+ $$.llvm_name +", 255");
@@ -416,8 +468,25 @@ Exp
          if(notIntOrByte($1.type,$3.type)) errorMismatch(yylineno); $$.type = biggerType($1.type, $3.type);
             $$.llvm_name = rgs.freshVar();
             $$.type = biggerType($1.type, $3.type);
-            cbf.emit($$.llvm_name + " = " + opcode_to_cmd(string($2.name), string($$.type)) + " i32 " + $1.llvm_name + ", " + $3.llvm_name);
-            if(strcmp($$.type, "BYTE") == 0)
+            
+
+            string reg1 = $1.llvm_name;
+            string reg2 = $3.llvm_name;
+            if($1.is_func)
+            {
+                reg1 = rgs.freshVar();
+                cbf.emit(reg1 + " = " + $1.label);
+            }
+            if($3.is_func)
+            {
+                reg2 = rgs.freshVar();
+                cbf.emit(reg2 + " = " + $3.label);
+            }            
+            cbf.emit($$.llvm_name + " = " + opcode_to_cmd(string($2.name), string($$.type)) + " i32 " + reg1 + ", " + reg2);
+            
+            
+            
+            if($$.type=="BYTE")
             {
                 string new_reg = rgs.freshVar();
                 cbf.emit(new_reg + " = and i32 "+ $$.llvm_name +", 255");
@@ -432,7 +501,7 @@ Exp
         $$.llvm_name = rgs.freshVar();
         cbf.emit($$.llvm_name + " = load i32, i32* " + curr_llvm_name );
            //TODO: check if correct
-        if(strcmp($$.type, "BOOL") == 0)
+        if($$.type== "BOOL")
             {
                 string compare_reg = rgs.freshVar();
                 cbf.emit(compare_reg + " = icmp eq i32 1, " + $$.llvm_name);
@@ -447,7 +516,7 @@ Exp
         $$.type = $1.type;
         $$.llvm_name = $1.llvm_name;
         $$.is_func = true;
-        if(strcmp($$.type, "BOOL") == 0)
+        if($$.type == "BOOL")
         {
             string temp_reg = rgs.freshVar();//ziv change
             string compare_reg = rgs.freshVar();
@@ -480,7 +549,7 @@ Exp
         str = str.substr(1, str.length() - 2);
         $$.name = str.data();
         $$.is_func = false;
-        int len = strlen($$.name) + 1;
+        int len = strlen($$.name.data()) + 1;
         cbf.emitGlobal(global_var + " = constant [" + to_string(str.length() + 1) + " x i8] c\"" + str + "\\00\"");
         cbf.emit($$.llvm_name + " = getelementptr ["+to_string(len)+" x i8], ["+to_string(len)+" x i8]* "+(global_var)+", i32 0, i32 0"); 
     }
@@ -511,6 +580,8 @@ Exp
     M1 Exp 
     { 
         if(notBool($5.type)) errorMismatch(yylineno); 
+        $1.trueList = cbf.merge($1.trueList, $4.trueList);
+
         bpVector($1.trueList, $4.label);
         $$.type=$1.type; 
         $$.llvm_name = VAR_EMPTY_STR;
@@ -523,6 +594,7 @@ Exp
     } M1 Exp 
     {   
         if(notBool($5.type)) errorMismatch(yylineno);
+        $1.trueList = cbf.merge($1.trueList, $4.trueList);
         bpVector($1.falseList,$4.label);
         $$.type = $1.type; 
         $$.falseList = $5.falseList;
@@ -576,7 +648,7 @@ Exp
         else{
             reg2 = $3.llvm_name;
         }
-        cbf.emit(branch_str + " = icmp " + opcode_to_cmd($2.name, $1.type) + " i32 " + $1.llvm_name + ", " + $3.llvm_name);
+        cbf.emit(branch_str + " = icmp " + opcode_to_cmd($2.name, $1.type) + " i32 " + reg1 + ", " + reg2);
         int branch_location = cbf.emit("br i1 " + branch_str + ", label @, label @");
         $$.trueList = cbf.makelist({branch_location, FIRST});
         $$.falseList = cbf.makelist({branch_location, SECOND});
@@ -591,11 +663,20 @@ Exp
         $$.type = $2.type;
         $$.llvm_name = rgs.freshVar();
         $$.name = $4.name;
+        if($4.is_func)
+        {
+            string reg = rgs.freshVar();
+            cbf.emit(reg + " = " + $4.label);
+            cbf.emit($$.llvm_name + " = and i32 "+ reg +", 255");
+        }
+        else{
+            cbf.emit($$.llvm_name + " = and i32 "+ $4.llvm_name +", 255");
+        }
         }
     ;
 
 %%
-char* join(char* s1, char* s2)
+/*char* join(char* s1, char* s2)
 {
     
     int str_len=strlen(s1)+strlen(s2);
@@ -606,11 +687,11 @@ char* join(char* s1, char* s2)
     //not freeing memory, might be a problem atm.
 
     return joined_str;
-}
+}*/
 
-bool notBool( char* type)
+bool notBool(string type)
 {
-    return strcmp(type,"BOOL")!=0;
+    return type!="BOOL";
 }
 
 bool byteTooLarge(int value)
@@ -618,9 +699,9 @@ bool byteTooLarge(int value)
     return value > 255;
 
 }
-bool typesDontMatch(  char* LHS_type,  char* RHS_type)
+bool typesDontMatch( string LHS_type,  string RHS_type)
 {
-    if (strcmp(LHS_type,RHS_type)!=0 && ( (strcmp(LHS_type,"INT")!=0) || (strcmp(RHS_type,"BYTE")!=0) ) )
+    if ((LHS_type!=RHS_type) && ( (LHS_type!="INT") || (RHS_type!="BYTE") ) )
     {
         return true;
     }
@@ -630,15 +711,14 @@ bool typesDontMatch(  char* LHS_type,  char* RHS_type)
     }
 }
 
-bool notIntOrByte( char* converter_type,  char* converted_type)
+bool notIntOrByte( string converter_type,  string converted_type)
 {
     
-    if((strcmp(converter_type,"INT")==0 && strcmp(converted_type,"BYTE")==0)
-         ||(strcmp(converter_type,"BYTE")==0 && strcmp(converted_type,"INT")==0)
-         ||(strcmp(converter_type,"INT")==0 && strcmp(converted_type,"INT")==0)
-         ||(strcmp(converter_type,"BYTE")==0 && strcmp(converted_type,"BYTE")==0))
+    if((converter_type=="INT" && converted_type=="BYTE")
+         ||(converter_type=="BYTE" && converted_type=="INT")
+         ||(converter_type=="INT" && converted_type=="INT")
+         ||(converter_type=="BYTE" && converted_type=="BYTE"))
          {
-            
             return false;
          }
     return true;
@@ -649,10 +729,9 @@ bool isVoid()
     string func_ret_type = _stack.getCurrentfunctionreturnType();
     return strcmp(func_ret_type.data(),"VOID")==0;
 }
-
-char* biggerType(char* first, char* second)
+string biggerType(string first, string second)
 {
-    return strcmp(second,"BYTE")==0?second:first;
+    return (second=="BYTE")? second : first;
 }
 
 int main()

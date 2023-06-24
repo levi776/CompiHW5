@@ -267,7 +267,9 @@ class symbol_tables_stack{
         string getFuncReturnType(const string& func_name,const string& parameters)
         {
             table_entry *func = this->findFunc(func_name, parameters, false, false);
-            if(func == nullptr)
+           // std::cout << "getFuncReturnType func_name" << func_name << std::endl;
+           // std::cout << " params:" << parameters << std::endl;
+            if (func == nullptr)
             {
                 assert(false);
             }
@@ -277,18 +279,21 @@ class symbol_tables_stack{
         {
             return this->tables.top()->findByName(name)->get_name_at_llvm();
         }
-        string getFunctionLlvmName(string func_name, string parameters)
+        string getFunctionLlvmName(const string& func_name,const string& parameters)
         {
             table_entry *func = this->findFunc(func_name, parameters, false, false);
+          //  std::cout << "getFunctionLlvmName func name: "<<  func_name << std::endl;
+          //  std::cout << "parameters: "<<  parameters << std::endl;
             if(func == nullptr)
             {
+                //std::cout << "in assert" << std::endl;
                 assert(false);
             }
             return func->get_name_at_llvm();
 
         }
 
-        table_entry* findFunc(const string& name,const string& parameters="",bool exactly_the_same=false,bool search_name_only=true, const string& returnType="",bool include_retType_in_search=false)
+        table_entry* findFunc(const string& name,const string& parameters = "", bool exactly_the_same = false, bool search_name_only = true, const string& returnType = "" ,bool include_retType_in_search = false)
         {
 
             table_entry *func = nullptr;
@@ -296,10 +301,9 @@ class symbol_tables_stack{
             if(search_name_only==true)
             {
                 func =  this->get_global_scope()->getLastDefinedInScope(name);
-
             }
             else{
-           // cout << "for name: " << name << "parameters are(for debugging,comment please, symbol_tables_stack.hpp line 331~): " << parameters << endl;
+          //  std::cout << "for name: " << name << "parameters are(for debugging,comment please, symbol_tables_stack.hpp line 331~): " << parameters << std::endl;
             if(!entries.empty())
             {
                 for(table_entry* entry : entries){

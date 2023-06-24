@@ -1,36 +1,36 @@
-override void printByValue(bool val) {
-	if (val)
-		print("val is true");
-	else {
-		print("val is false");
-	}
+void soGood()
+{
+    return;
+    return;
+    return;
+    return;
+    return;
 }
 
-override void printByValue(int val) {
-	if (val<5)
-		print("val is true");
-	else {
-		print("val is false");
-	}
+
+int nest1(int var1, int var2, int var3) // SIGMA
+{
+    return var1 + var2 + var3;
 }
+
+byte nest2(int var1, int var2) // 3(var1+var2)
+{
+    byte temp;
+    temp = (byte)var1 + (byte)var2;
+    return (byte)nest1(temp, temp, temp);
+}
+
+byte nest3(byte var1, byte var2)
+{
+    return nest2(var1/2, var2/3) + nest2(var2/2, var1/3); // nest2(3, 10) + nest2(15, 2) = 
+}                                                         // 3*(13)       + 3*(17) 
 
 
 void main() {
-	bool x = true;
-	int y = 5;
-	printByValue(y);
-
-	printByValue(x);
-	printByValue(not x);
-
-	if(true)
-    {
-        print("true");
-    }
-
-    if(false or false and  true)
-    {
-        print("true");
-    }
-    
+    print("Should be seeing 90 (I think)");
+    byte x = nest3(6b, 30b);
+    printi(x);
+    printi(nest3(6b, 30b));
+    print("Should be seeing 8 (I think)");
+    printi(nest3(71b, 37b));
 }

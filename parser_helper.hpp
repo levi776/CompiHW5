@@ -153,7 +153,7 @@ void varDefintionGenerate(string type, string var_name){
         cbf.emit("store i32 " + reg_from +", i32* " + var_name);
       }
 void varDefintionAndAssignmentGenerate(string llvm_var, string expr_value, string exp_type,
-vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIndex>>& exp_false_list, bool flag){
+vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIndex>>& exp_false_list, bool flag/*,bool exp_is_func*/){
         string llvm_var_name = llvm_var;
         string reg_from = expr_value;
         if(exp_type == "BOOL")
@@ -177,6 +177,11 @@ vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIn
         {
             cbf.emit(llvm_var_name + " = alloca i32");
         }
+      //  if(exp_is_func)
+      //  {
+        
+       // }
+       
         cbf.emit("store i32 " + reg_from + ", i32* " + llvm_var_name);
 }
 
@@ -303,11 +308,11 @@ string funcCall(string func_ret_type,
         auto true_it = truelist_vec.begin(), false_it = falselist_vec.begin();
         for (; it < llvm_name_vec.end(); it++, /*labels_it++,*/ types_it++, true_it++, false_it++)
         {
-          if(jump_to_next_param != -1)
-          {
+          //if(jump_to_next_param != -1)
+         // {
             //cbf.bpatch(cbf.makelist({jump_to_next_param, FIRST}), *(labels_it));
-            jump_to_next_param = -1;
-          }
+       //     jump_to_next_param = -1;
+         // }
           if((*types_it) == "STRING")
           {
             call_str += "i8* " + *it;
@@ -315,8 +320,13 @@ string funcCall(string func_ret_type,
           else if((*types_it) == "BOOL")
           {
             string var = rgs.freshVar();
+            
+
+            jump_to_next_param = cbf.emit("br label @");
             string true_label = cbf.genLabel();
-            if(once_bpatch != -1)
+            cbf.bpatch(cbf.makelist({jump_to_next_param,FIRST}),true_label);
+            // cbf.emit("ZIV");
+            if (once_bpatch != -1)
             {
               cbf.bpatch(cbf.makelist({once_bpatch, FIRST}), true_label);
               once_bpatch = -1;
@@ -345,7 +355,12 @@ string funcCall(string func_ret_type,
               call_str += ", ";
           }
           
-          if(it + 1 == llvm_name_vec.end())
+          if(it + 1 != llvm_name_vec.end())
+          {
+              ;
+              // jump_to_next_param = cbf.emit("br label @");
+          }
+          else
           {
             int end_line = cbf.emit("br label @");
             string end_label = cbf.genLabel();

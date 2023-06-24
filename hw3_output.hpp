@@ -8,9 +8,9 @@ using namespace std;
 
 typedef struct token_att {
     int intVal;
-    char* strVal;
-    char* type;
-    char* name;
+    string strVal;
+    string type;
+    string name;
     string llvm_name; //var in nikita
     vector<pair<int,BranchLabelIndex>> trueList;
     vector<pair<int,BranchLabelIndex>> falseList;
