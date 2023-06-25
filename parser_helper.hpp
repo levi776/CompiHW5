@@ -27,15 +27,15 @@ string convertToLLVMType(string type)
 
 string evalBOOL()
 {
-  int false_line = cbf.emit("br label @");
-  int true_line = cbf.emit("br label @");
 
-  string true_label = cbf.genLabel();
+  int true_line = cbf.emit("br label @");
+  int false_line = cbf.emit("br label @");
+  string true_label = cbf.genLabel("evalBool_true");
   int true_line_to_next = cbf.emit("br label @");
-  string false_label = cbf.genLabel();
+  string false_label = cbf.genLabel("evalBool_false");
   int false_line_to_next = cbf.emit("br label @");
   
-  string next_label = cbf.genLabel();
+  string next_label = cbf.genLabel("evalBool_next");
 
   cbf.bpatch(cbf.makelist({false_line, FIRST}), false_label);
   cbf.bpatch(cbf.makelist({true_line, FIRST}), true_label);
@@ -133,7 +133,7 @@ void bpVector(vector<pair<int,BranchLabelIndex>> nextlist,string f_label = ""){
         string label;
         if(f_label == "")
         {
-         label = cbf.genLabel();
+         label = cbf.genLabel("bpVector");
          
         }
         else {
@@ -158,11 +158,13 @@ vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIn
         string reg_from = expr_value;
         if(exp_type == "BOOL")
         {
-          string true_label = cbf.genLabel();
+          int line = cbf.emit("br label @");
+          string true_label = cbf.genLabel("var_define_true");
+          cbf.bpatch(cbf.makelist({line, FIRST}), true_label);
           int true_line = cbf.emit("br label @");
-          string false_label = cbf.genLabel();
+          string false_label = cbf.genLabel("var_define_false");
           int false_line = cbf.emit("br label @");  
-          string next_label = cbf.genLabel();
+          string next_label = cbf.genLabel("var_define_next");
           auto true_list = cbf.makelist({true_line, FIRST});
           auto false_list = cbf.makelist({false_line, FIRST});
           bpVector(true_list, next_label);
@@ -233,13 +235,13 @@ void validateBinop(string operation, string second_operand)
             string is_zero = rgs.freshVar("is_zero");
             cbf.emit(is_zero + " = icmp eq i32 " + second_operand +", 0");
             int jump_line = cbf.emit("br i1 " + is_zero + ", label @, label @");
-            string zero_label = cbf.genLabel();
+            string zero_label = cbf.genLabel("zero_validate_binop");
             cbf.emit("call void @print (i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.error, i32 0, i32 0))");
             cbf.emit("call void @exit(i32 0)");
             int jump_next_line = cbf.emit("br label @");
             //cbf.emit("validateBinop:");
 
-            string not_zero_label = cbf.genLabel();
+            string not_zero_label = cbf.genLabel("not_zero_validate_binop");
 
             cbf.bpatch(cbf.makelist({jump_line, FIRST}), zero_label);
             cbf.bpatch(cbf.makelist({jump_line, SECOND}), not_zero_label);
@@ -250,11 +252,11 @@ void validateBinop(string operation, string second_operand)
 void emitBool(string llvm_name,vector<pair<int,BranchLabelIndex>> true_list,vector<pair<int,BranchLabelIndex>> false_list)
 {
         // i dont think we need new labels  here, we need previous labels.
-        string true_label = cbf.genLabel();
+        string true_label = cbf.genLabel("emitBool_true");
         int true_line = cbf.emit("br label @");
-        string false_label = cbf.genLabel();
+        string false_label = cbf.genLabel("emitBool_false");
         int false_line = cbf.emit("br label @");
-        string return_label = cbf.genLabel();
+        string return_label = cbf.genLabel("emitBool_ret");
         cbf.emit(llvm_name + " = phi i32 [1, %" + true_label + "], [0, %" + false_label + "]");
 
         cbf.bpatch(true_list, true_label);
@@ -285,42 +287,41 @@ string funcCall(string func_ret_type,
         vector<string> types_vec = parseString(func_param_types);
         vector<string> llvm_name_vec = parseString(func_param_llvm_names);
         int jump_to_next_param = -1;
-        int once_bpatch = -1;
+        //int once_bpatch = -1;
         
         auto it = llvm_name_vec.begin(), types_it = types_vec.begin();
-        int last_command_to_end = cbf.emit("br label @");
-        if(notLastBool(types_it, types_vec.end()))
-        {
-          once_bpatch = cbf.emit("br label @");
-        }
+        //int last_command_to_end = cbf.emit("br label @");
+        // if(notLastBool(types_it, types_vec.end()))
+        // {
+        //   once_bpatch = cbf.emit("br label @");
+        // }
         //auto labels_it = labels_vec.begin();
         auto true_it = truelist_vec.begin(), false_it = falselist_vec.begin();
         for (; it < llvm_name_vec.end(); it++, types_it++, true_it++, false_it++)
         {
-        //   if(jump_to_next_param != -1)
-        //  {
-        //     cbf.bpatch(cbf.makelist({jump_to_next_param, FIRST}), *(labels_it));
-        //    jump_to_next_param = -1;
-        //  }
           if((*types_it) == "STRING")
           {
             call_str += "i8* " + *it;
           }
           else if((*types_it) == "BOOL")
           {
+            // string var = rgs.freshVar("var");
+            // jump_to_next_param = cbf.emit("br label @");
+            // string true_label = cbf.genLabel("func_call_true");
+            // cbf.bpatch(cbf.makelist({jump_to_next_param,FIRST}),true_label);
+            // if (once_bpatch != -1)
+            // {
+            //   cbf.bpatch(cbf.makelist({once_bpatch, FIRST}), true_label);
+            //   once_bpatch = -1;
+            // }
             string var = rgs.freshVar("var");
             jump_to_next_param = cbf.emit("br label @");
-            string true_label = cbf.genLabel();
+            string true_label = cbf.genLabel("func_call_true");
             cbf.bpatch(cbf.makelist({jump_to_next_param,FIRST}),true_label);
-            if (once_bpatch != -1)
-            {
-              cbf.bpatch(cbf.makelist({once_bpatch, FIRST}), true_label);
-              once_bpatch = -1;
-            }
             int true_line = cbf.emit("br label @");
-            string false_label = cbf.genLabel();
+            string false_label = cbf.genLabel("func_call_false");
             int false_line = cbf.emit("br label @");
-            string next_label = cbf.genLabel();
+            string next_label = cbf.genLabel("func_call_next");
             cbf.emit(var + " = phi i32 [1, %" + true_label +"], [0, %" + false_label +"]");
             cbf.bpatch((*true_it), true_label);
             cbf.bpatch((*false_it), false_label);
@@ -345,9 +346,9 @@ string funcCall(string func_ret_type,
           else
           {
             int end_line = cbf.emit("br label @");
-            string end_label = cbf.genLabel();
-            cbf.bpatch(cbf.merge(cbf.makelist({end_line, FIRST}), cbf.makelist({last_command_to_end, FIRST})), end_label);
- 
+            string end_label = cbf.genLabel("func_call_end");
+            // cbf.bpatch(cbf.merge(cbf.makelist({end_line, FIRST}), cbf.makelist({last_command_to_end, FIRST})), end_label);
+            cbf.bpatch(cbf.makelist({end_line, FIRST}), end_label);//ziv change
           }
         }
         call_str += ")";

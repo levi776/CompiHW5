@@ -20,6 +20,9 @@ typedef struct tk_att {
         vector<pair<int,BranchLabelIndex>> contList;
         vector<vector<pair<int,BranchLabelIndex>>> trueListList;
         vector<vector<pair<int,BranchLabelIndex>>> falseListList;
+        vector<string> ExpListEmitVec;
+        vector<pair<int,BranchLabelIndex>> jumpList;
+        string startLabel;
         string label;
         bool is_func;
     }token_att;

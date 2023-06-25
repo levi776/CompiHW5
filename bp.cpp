@@ -25,8 +25,11 @@ void CodeBuffer::dec_tab()
 }
 
 
-string CodeBuffer::genLabel(){
+string CodeBuffer::genLabel(std::string label_name){
 	std::stringstream label;
+    if(label_name!=""){
+        label << label_name+"_";
+    }
 	label << "label_";
 	label << buffer.size();
 	std::string ret(label.str());

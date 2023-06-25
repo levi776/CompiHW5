@@ -192,9 +192,9 @@ Statement
         $2->type=$1->type; _stack.insert($2->name , $2->type, $$->llvm_name, false, false, yylineno);     
         
         string exp_llvm_name = $4->llvm_name;
-            if($4->is_func)
+            if($4->is_func&& $4->type!="BOOL")
             {
-               exp_llvm_name = rgs.freshVar();
+               exp_llvm_name = rgs.freshVar("exp_llvm_reg_type_id_assign_exp_sc");
                cbf.emit(exp_llvm_name + " = " + $4->label);
            }
         varDefintionAndAssignmentGenerate(/*llvm_var*/$$->llvm_name,
@@ -213,12 +213,11 @@ Statement
             if(typesDontMatch(_stack.getType($1->name), $4->type)) errorMismatch(yylineno);
             string llvm_name = _stack.getLlvmName(string($1->name));
             string exp_llvm_name = $4->llvm_name;
-            if($4->is_func)
+            if($4->is_func&& $4->type!= "BOOL")
             {
-               exp_llvm_name = rgs.freshVar();
+               exp_llvm_name = rgs.freshVar("exp_llvm_name_reg_id_assign_exp_sc_"+$1->name);
                cbf.emit(exp_llvm_name + " = " + $4->label);
            }
-            
             varDefintionAndAssignmentGenerate(/*llvm_var*/llvm_name,
                                 /*number value*/exp_llvm_name,
                                 /*exp_type*/string($4->type),   
@@ -231,7 +230,7 @@ Statement
         $$ = new token_att();
       $$->label = $1->label;
       $$->type = $1->type;
-      $$->llvm_name = rgs.freshVar();
+      $$->llvm_name = rgs.freshVar("llvm_name_reg_call_sc_return_sc");
       //TODO: refference
       
       //resolve_jump_next_line(string($1->startLabel),$1->jumpList);
@@ -243,7 +242,8 @@ Statement
         }
     | RETURN Exp SC {$$ = new token_att();
         if(isVoid()||!_stack.is_desired_return_type(string($2->type),_stack.getCurrentfunctionreturnType(),false)) errorMismatch(yylineno);
-        if($2->type== "BOOL")
+        
+        if($2->type == "BOOL")
         {
             $2->llvm_name = rgs.freshVar("bool_var");
             emitBool($2->llvm_name, $2->trueList, $2->falseList);
@@ -332,17 +332,14 @@ Call
 
     
         $$ = new token_att();
-
+        // for(auto it= $3->ExpListEmitVec.rbegin();it<$3->ExpListEmitVec.rend();it++){
+        //     cbf.emit(*it);
+        // }
         //todo understand
         _stack.validateCall(string($1->name), string($3->type), yylineno);
         $$->name = $1->name;
         string expList_type = string($3->type); 
-        //std::cout << "ExpList type: " << expList_type  << std::endl;
-        //std::cout << "dollar3 type: " << string($3->type)  << std::endl;
-
         $$->type = _stack.getFuncReturnType(string($1->name),expList_type);
-        //std::cout << "ExpList type: " << expList_type << std::endl;
-        //std::cout << "$3 type: " << string($3->llvm_name)  << std::endl;
         $$->llvm_name = _stack.getFunctionLlvmName(string($1->name), expList_type);
         $$->label = funcCall(/*function return type*/string($$->type),
                       /*function parameter types*/string($3->type),
@@ -354,14 +351,12 @@ Call
                       );
         //cbf.emit($$->label);
         $$->is_func = true;
-        
-
+    
     }
     | ID LPAREN RPAREN 
     { 
         //todo understand
-                    $$ = new token_att();
-
+        $$ = new token_att();
         _stack.validateCall(string($1->name), "",yylineno);
         $$->name = $1->name;
         //cbf.emit("ID LPAREN RPAREN");
@@ -370,6 +365,7 @@ Call
         string call_str = "call " + convertToLLVMType(string($$->type))+" "+str_name + "()";
         $$->label = string(call_str);
         $$->is_func = true;
+        $$->llvm_name = str_name;
 
     }
     ;
@@ -397,13 +393,13 @@ CHECK_TYPE_MARKER
 M1:
     /*epsilon*/ {$$ = new token_att();
         //int line = cbf.emit("br label @");
-        $$->label = cbf.genLabel();
+        $$->label = cbf.genLabel("m1");
         //$$->trueList = cbf.makelist({line,FIRST});
     } ;
 M2:
     /*epsilon*/ {$$ = new token_att();
      //  int line = cbf.emit("br label @");
-       $$->label = cbf.genLabel();
+       $$->label = cbf.genLabel("m2");
 //$$->falseList = cbf.makelist({line,FIRST});
     } ;
 NEXT
@@ -416,7 +412,7 @@ M3:
     {
         $$ = new token_att();
         int line = cbf.emit("br label @");
-        $$->label = cbf.genLabel();
+        $$->label = cbf.genLabel("m3");
         cbf.bpatch(cbf.makelist({line,FIRST}),$$->label);
     };
 ExpList
@@ -425,14 +421,22 @@ ExpList
     $$ = new token_att();
     $$->type = $1->type;
     string reg = $1->llvm_name;
-    if($1->is_func)
+    /*if($1->is_func&&$1->type!= "BOOL")
     {
-        reg = rgs.freshVar("func_reg");
+        reg = rgs.freshVar("expList_exp_func_reg");
         cbf.emit(reg + " = " + $1->label);
         $$->llvm_name = reg; //LEVI CHANGE BROH
-    } 
+    } */
+    //changes, we this to act like left recursion.
+
+    if($1->is_func && $1->type!="BOOL")
+    {
+        reg = rgs.freshVar("expList_exp_func_reg");
+        string str_call = reg+ " = "+$1->label;
+        $$->ExpListEmitVec.push_back(str_call);
+    }
+    $$->llvm_name = reg;
     //TODO: understand
-    $$->llvm_name = reg ;
     ($$->trueListList).push_back($1->trueList); 
     ($$->falseListList).push_back($1->falseList);
     }
@@ -445,8 +449,14 @@ ExpList
         if($1->is_func)
         {
             reg = rgs.freshVar("exp_list_func_reg");
-            cbf.emit(reg + " = " + $1->label);
+            string str_call = reg + " = " + $1->label;
+            $$->ExpListEmitVec = $3->ExpListEmitVec;
+            $$->ExpListEmitVec.push_back(str_call);
             $1->llvm_name = reg; //LEVI CHANGE BROH
+        }
+        else{
+            $$->ExpListEmitVec =$3->ExpListEmitVec;
+            $1->llvm_name = reg;
         }
         $$->llvm_name = $1->llvm_name + "," + $3->llvm_name;
         ($3->trueListList).insert(($3->trueListList).begin(), $1->trueList);
@@ -468,13 +478,13 @@ Exp
         $$->trueList = $2->trueList;
         $$->type = $2->type;
         $$->is_func = $2->is_func;
+        $$->label = $2->label;
         }
-    | Exp MD_BINOP Exp %prec MD_BINOP {$$ = new token_att();
-         if(notIntOrByte($1->type,$3->type)) errorMismatch(yylineno); $$->type = biggerType($1->type, $3->type);
-         //TODO : understand
+    | Exp MD_BINOP Exp %prec MD_BINOP {
+         if(notIntOrByte($1->type,$3->type)) errorMismatch(yylineno);
+         $$ = new token_att();
+          $$->type = biggerType($1->type, $3->type);
             $$->llvm_name = rgs.freshVar("md_binop_reg");
-            validateBinop(string($2->name), $3->llvm_name);
-            
             string reg1 = $1->llvm_name;
             string reg2 = $3->llvm_name;
             if($1->is_func)
@@ -484,9 +494,10 @@ Exp
             }
             if($3->is_func)
             {
-                reg2 = rgs.freshVar();
+                reg2 = rgs.freshVar("second_exp_md_binop_reg");
                 cbf.emit(reg2 + " = " + $3->label);
             }
+            validateBinop(string($2->name), reg2);
             cbf.emit($$->llvm_name + " = " + opcode_to_cmd(string($2->name), string($$->type)) + " i32 " + reg1 + ", " + reg2);
             if($$->type=="BYTE")
             {
@@ -712,7 +723,7 @@ Exp
         $$->name = $4->name;
         if($4->is_func)
         {
-            string reg = rgs.freshVar("func_reg");
+            string reg = rgs.freshVar("l_t_r_e_func_reg");
             cbf.emit(reg + " = " + $4->label);
             cbf.emit($$->llvm_name + " = and i32 "+ reg +", 255");
         }
