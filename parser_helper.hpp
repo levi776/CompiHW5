@@ -59,7 +59,13 @@ void printGlobalAndCodeBuffer()
     cbf.printGlobalBuffer();
     cbf.printCodeBuffer();
 }
-
+ void resolve_jump_to_next_line(token_att* token){
+     vector<string> labels_vec = parseString(token->startLabel);
+     if(labels_vec.size() > 0)
+     {
+    cbf.bpatch(token->jumpList, labels_vec.at(0));
+     }
+ }
 void declareFunction(bool is_override, string func_name, string func_arguments_type_string, string func_arguments_name_string, string fresh_func_name, string func_type)
 {
     //string fresh_func_name = rgs.freshVar(func_name, /*is_global = */true); -> this is now created in parser.ypp
@@ -147,7 +153,7 @@ void varDefintionGenerate(string type, string var_name){
     string reg_from = "0";
     if (type == "BOOL") // a way to evaluate bool.
         {
-          reg_from = evalBOOL();
+          //reg_from = evalBOOL();
         }
         cbf.emit(var_name + " = alloca i32");        
         cbf.emit("store i32 " + reg_from +", i32* " + var_name);
@@ -156,7 +162,7 @@ void varDefintionAndAssignmentGenerate(string llvm_var, string expr_value, strin
 vector<pair<int,BranchLabelIndex>>& exp_true_list, vector<pair<int,BranchLabelIndex>>& exp_false_list, bool flag/*,bool exp_is_func*/){
         string llvm_var_name = llvm_var;
         string reg_from = expr_value;
-        if(exp_type == "BOOL")
+        if (exp_type == "BOOL")
         {
           int line = cbf.emit("br label @");
           string true_label = cbf.genLabel("var_define_true");
@@ -280,44 +286,45 @@ string funcCall(string func_ret_type,
                 string func_param_llvm_names,
                 vector<vector<pair<int,BranchLabelIndex>>>& truelist_vec,
                 vector<vector<pair<int,BranchLabelIndex>>>& falselist_vec,
-                string func_name)//,
+                string func_name,
+                vector<string> labels_vec)//,
                 //string start_label)
 {
         string call_str = "call " + convertToLLVMType(string(func_ret_type)) + " " + func_name + " (";
         vector<string> types_vec = parseString(func_param_types);
         vector<string> llvm_name_vec = parseString(func_param_llvm_names);
         int jump_to_next_param = -1;
-        //int once_bpatch = -1;
+        int once_bpatch = -1;
         
         auto it = llvm_name_vec.begin(), types_it = types_vec.begin();
-        //int last_command_to_end = cbf.emit("br label @");
-        // if(notLastBool(types_it, types_vec.end()))
-        // {
-        //   once_bpatch = cbf.emit("br label @");
-        // }
-        //auto labels_it = labels_vec.begin();
-        auto true_it = truelist_vec.begin(), false_it = falselist_vec.begin();
-        for (; it < llvm_name_vec.end(); it++, types_it++, true_it++, false_it++)
+        int last_command_to_end = cbf.emit("br label @");
+        if(notLastBool(types_it, types_vec.end()))
         {
-          if((*types_it) == "STRING")
-          {
+          once_bpatch = cbf.emit("br label @");
+        }
+        auto labels_it = labels_vec.begin();
+        auto true_it = truelist_vec.begin(), false_it = falselist_vec.begin();
+        for (; it < llvm_name_vec.end(); it++, types_it++, true_it++, false_it++, labels_it++)
+        {
+            if(jump_to_next_param != -1)
+            {
+              cbf.bpatch(cbf.makelist({jump_to_next_param, FIRST}), *(labels_it));
+              jump_to_next_param = -1;
+            }
+             if((*types_it) == "STRING")
+              {
             call_str += "i8* " + *it;
-          }
-          else if((*types_it) == "BOOL")
-          {
-            // string var = rgs.freshVar("var");
-            // jump_to_next_param = cbf.emit("br label @");
-            // string true_label = cbf.genLabel("func_call_true");
-            // cbf.bpatch(cbf.makelist({jump_to_next_param,FIRST}),true_label);
-            // if (once_bpatch != -1)
-            // {
-            //   cbf.bpatch(cbf.makelist({once_bpatch, FIRST}), true_label);
-            //   once_bpatch = -1;
-            // }
+              }
+              else if((*types_it) == "BOOL")
+           {
             string var = rgs.freshVar("var");
-            jump_to_next_param = cbf.emit("br label @");
             string true_label = cbf.genLabel("func_call_true");
-            cbf.bpatch(cbf.makelist({jump_to_next_param,FIRST}),true_label);
+            if (once_bpatch != -1)
+            {
+              cbf.bpatch(cbf.makelist({once_bpatch, FIRST}), *(labels_it));
+              once_bpatch = -1;
+            }
+
             int true_line = cbf.emit("br label @");
             string false_label = cbf.genLabel("func_call_false");
             int false_line = cbf.emit("br label @");
@@ -327,7 +334,6 @@ string funcCall(string func_ret_type,
             cbf.bpatch((*false_it), false_label);
             cbf.bpatch(cbf.makelist({true_line, FIRST}), next_label);
             cbf.bpatch(cbf.makelist({false_line, FIRST}), next_label);
-            
             call_str += "i32 " + var;
           }
           else
@@ -341,14 +347,13 @@ string funcCall(string func_ret_type,
           
           if(it + 1 != llvm_name_vec.end())
           {
-               //jump_to_next_param = cbf.emit("br label @");
+               jump_to_next_param = cbf.emit("br label @");
           }
           else
           {
             int end_line = cbf.emit("br label @");
             string end_label = cbf.genLabel("func_call_end");
-            // cbf.bpatch(cbf.merge(cbf.makelist({end_line, FIRST}), cbf.makelist({last_command_to_end, FIRST})), end_label);
-            cbf.bpatch(cbf.makelist({end_line, FIRST}), end_label);//ziv change
+            cbf.bpatch(cbf.merge(cbf.makelist({end_line, FIRST}), cbf.makelist({last_command_to_end, FIRST})), end_label);
           }
         }
         call_str += ")";
